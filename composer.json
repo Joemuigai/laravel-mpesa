@@ -1,12 +1,13 @@
 {
     "name": "joemuigai/laravel-mpesa",
-    "description": "This is my package laravel-mpesa",
+    "description": "A Laravel Mpesa integration package",
     "keywords": [
         "Joemuigai",
         "laravel",
         "laravel-mpesa"
     ],
     "homepage": "https://github.com/joemuigai/laravel-mpesa",
+    "type": "library",
     "license": "MIT",
     "authors": [
         {
