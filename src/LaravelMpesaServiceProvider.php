@@ -19,7 +19,7 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             ->name('laravel-mpesa')
             ->hasConfigFile()
             ->hasViews()
-            ->hasMigration('create_laravel_mpesa_table')
+            ->hasMigration('create_mpesa_transactions_table')
             ->hasCommand(LaravelMpesaCommand::class);
     }
 }
