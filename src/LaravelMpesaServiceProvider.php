@@ -2,9 +2,9 @@
 
 namespace Joemuigai\LaravelMpesa;
 
+use Joemuigai\LaravelMpesa\Commands\LaravelMpesaCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use Joemuigai\LaravelMpesa\Commands\LaravelMpesaCommand;
 
 class LaravelMpesaServiceProvider extends PackageServiceProvider
 {
