@@ -390,8 +390,8 @@ return [
 
     'security' => [
         'certificates' => [
-            'sandbox'    => __DIR__ . '/../src/Certificates/SandboxCertificate.cer',
-            'production' => __DIR__ . '/../src/Certificates/ProductionCertificate.cer',
+            'sandbox' => __DIR__.'/../src/Certificates/SandboxCertificate.cer',
+            'production' => __DIR__.'/../src/Certificates/ProductionCertificate.cer',
         ],
 
         // Cache generated SecurityCredential for this many seconds
