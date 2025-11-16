@@ -37,7 +37,7 @@ return [
     */
 
     'credentials' => [
-        'consumer_key'    => env('MPESA_CONSUMER_KEY'),
+        'consumer_key' => env('MPESA_CONSUMER_KEY'),
         'consumer_secret' => env('MPESA_CONSUMER_SECRET'),
     ],
 
@@ -56,7 +56,7 @@ return [
     */
 
     'base_urls' => [
-        'sandbox'    => env('MPESA_BASE_URL_SANDBOX', 'https://sandbox.safaricom.co.ke'),
+        'sandbox' => env('MPESA_BASE_URL_SANDBOX', 'https://sandbox.safaricom.co.ke'),
         'production' => env('MPESA_BASE_URL_PRODUCTION', 'https://api.safaricom.co.ke'),
     ],
 
@@ -120,7 +120,7 @@ return [
             env('MPESA_PAYBILL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE'))
         ),
 
-        'validation_url'   => env('MPESA_C2B_VALIDATION_URL'),
+        'validation_url' => env('MPESA_C2B_VALIDATION_URL'),
         'confirmation_url' => env('MPESA_C2B_CONFIRMATION_URL'),
 
         /*
@@ -157,16 +157,16 @@ return [
         'command_id' => env('MPESA_B2C_COMMAND_ID', 'BusinessPayment'),
 
         // Where Safaricom sends B2C callbacks
-        'result_url'  => env('MPESA_B2C_RESULT_URL'),
+        'result_url' => env('MPESA_B2C_RESULT_URL'),
         'timeout_url' => env('MPESA_B2C_TIMEOUT_URL'),
 
         'defaults' => [
-            'remarks'  => env('MPESA_B2C_DEFAULT_REMARKS', 'B2C Payment'),
+            'remarks' => env('MPESA_B2C_DEFAULT_REMARKS', 'B2C Payment'),
             'occasion' => env('MPESA_B2C_DEFAULT_OCCASION'),
         ],
 
         'constraints' => [
-            'remarks_max'  => 100,
+            'remarks_max' => 100,
             'occasion_max' => 100,
         ],
     ],
@@ -197,16 +197,16 @@ return [
          */
         'identifier_type' => env('MPESA_TXN_STATUS_IDENTIFIER_TYPE', 4),
 
-        'result_url'  => env('MPESA_STATUS_RESULT_URL'),
+        'result_url' => env('MPESA_STATUS_RESULT_URL'),
         'timeout_url' => env('MPESA_STATUS_TIMEOUT_URL'),
 
         'defaults' => [
-            'remarks'  => env('MPESA_TXN_STATUS_DEFAULT_REMARKS', 'Transaction Status Query'),
+            'remarks' => env('MPESA_TXN_STATUS_DEFAULT_REMARKS', 'Transaction Status Query'),
             'occasion' => env('MPESA_TXN_STATUS_DEFAULT_OCCASION'),
         ],
 
         'constraints' => [
-            'remarks_max'  => 100,
+            'remarks_max' => 100,
             'occasion_max' => 100,
         ],
     ],
@@ -230,13 +230,13 @@ return [
 
         'register' => [
             // Value as per Daraja docs (no default here on purpose)
-            'request_type'     => env('MPESA_PULL_REQUEST_TYPE'),
+            'request_type' => env('MPESA_PULL_REQUEST_TYPE'),
 
             // MSISDN in 2547XXXXXXXX format
             'nominated_number' => env('MPESA_PULL_NOMINATED_MSISDN'),
 
             // Where Safaricom sends notifications for the Pull API
-            'callback_url'     => env('MPESA_PULL_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
+            'callback_url' => env('MPESA_PULL_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
         ],
 
         // Query API uses ShortCode + StartDate/EndDate/OffSetValue per call,
@@ -268,18 +268,18 @@ return [
 
         // Default TransactionType values (can be overridden per call)
         'transaction_types' => [
-            'paybill'   => env('MPESA_STK_TYPE_PAYBILL', 'CustomerPayBillOnline'),
+            'paybill' => env('MPESA_STK_TYPE_PAYBILL', 'CustomerPayBillOnline'),
             'buy_goods' => env('MPESA_STK_TYPE_BUY_GOODS', 'CustomerBuyGoodsOnline'),
         ],
 
         'defaults' => [
             'account_reference' => env('MPESA_STK_DEFAULT_ACCOUNT_REF'),
-            'transaction_desc'  => env('MPESA_STK_DEFAULT_DESC', 'Payment'),
+            'transaction_desc' => env('MPESA_STK_DEFAULT_DESC', 'Payment'),
         ],
 
         'constraints' => [
             'account_reference_max' => 12,  // per Daraja docs
-            'transaction_desc_max'  => 13,  // per Daraja docs
+            'transaction_desc_max' => 13,  // per Daraja docs
         ],
     ],
 
@@ -298,7 +298,7 @@ return [
     */
 
     'initiator' => [
-        'name'     => env('MPESA_INITIATOR_NAME', 'testapi'),
+        'name' => env('MPESA_INITIATOR_NAME', 'testapi'),
         'password' => env('MPESA_INITIATOR_PASSWORD'),
     ],
 
@@ -312,32 +312,32 @@ return [
         'default' => env('MPESA_CALLBACK_URL'),
 
         'c2b' => [
-            'validation'   => env('MPESA_C2B_VALIDATION_URL'),
+            'validation' => env('MPESA_C2B_VALIDATION_URL'),
             'confirmation' => env('MPESA_C2B_CONFIRMATION_URL'),
         ],
 
         'b2c' => [
-            'result'  => env('MPESA_B2C_RESULT_URL'),
+            'result' => env('MPESA_B2C_RESULT_URL'),
             'timeout' => env('MPESA_B2C_TIMEOUT_URL'),
         ],
 
         'status' => [
-            'result'  => env('MPESA_STATUS_RESULT_URL'),
+            'result' => env('MPESA_STATUS_RESULT_URL'),
             'timeout' => env('MPESA_STATUS_TIMEOUT_URL'),
         ],
 
         'balance' => [
-            'result'  => env('MPESA_BALANCE_RESULT_URL'),
+            'result' => env('MPESA_BALANCE_RESULT_URL'),
             'timeout' => env('MPESA_BALANCE_TIMEOUT_URL'),
         ],
 
         'reversal' => [
-            'result'  => env('MPESA_REVERSAL_RESULT_URL'),
+            'result' => env('MPESA_REVERSAL_RESULT_URL'),
             'timeout' => env('MPESA_REVERSAL_TIMEOUT_URL'),
         ],
 
         'b2b' => [
-            'result'  => env('MPESA_B2B_RESULT_URL'),
+            'result' => env('MPESA_B2B_RESULT_URL'),
             'timeout' => env('MPESA_B2B_TIMEOUT_URL'),
         ],
     ],
@@ -412,9 +412,9 @@ return [
     */
 
     'http' => [
-        'timeout'         => env('MPESA_HTTP_TIMEOUT', 30),
+        'timeout' => env('MPESA_HTTP_TIMEOUT', 30),
         'connect_timeout' => env('MPESA_HTTP_CONNECT_TIMEOUT', 10),
-        'verify'          => env('MPESA_HTTP_VERIFY', true),
+        'verify' => env('MPESA_HTTP_VERIFY', true),
     ],
 
     /*
