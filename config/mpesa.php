@@ -390,15 +390,8 @@ return [
 
     'security' => [
         'certificates' => [
-            'sandbox' => env(
-                'MPESA_CERT_SANDBOX_PATH',
-                base_path('vendor/joemuigai/laravel-mpesa/src/Certificates/SandboxCertificate.cer')
-            ),
-
-            'production' => env(
-                'MPESA_CERT_PRODUCTION_PATH',
-                base_path('vendor/joemuigai/laravel-mpesa/src/Certificates/ProductionCertificate.cer')
-            ),
+            'sandbox'    => __DIR__ . '/../src/Certificates/SandboxCertificate.cer',
+            'production' => __DIR__ . '/../src/Certificates/ProductionCertificate.cer',
         ],
 
         // Cache generated SecurityCredential for this many seconds
