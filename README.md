@@ -1,4 +1,5 @@
-# This is my package laravel-mpesa
+<!-- get laravel-mpesa png -->
+![Laravel Mpesa Package](./.github/art/laravel-mpesa.png)
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/joemuigai/laravel-mpesa.svg?style=flat-square)](https://packagist.org/packages/joemuigai/laravel-mpesa)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/joemuigai/laravel-mpesa/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/joemuigai/laravel-mpesa/actions?query=workflow%3Arun-tests+branch%3Amain)
