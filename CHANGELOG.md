@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-mpesa` will be documented in this file.
 
+## 0.2.1 - 2025-11-24
+
+### What's Changed
+
+* docs: Add CONTRIBUTING guide and enhance USAGE documentation with production tips, prerequisites, and robust API examples including error handling. by @Joemuigai in https://github.com/Joemuigai/laravel-mpesa/pull/4
+
+**Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/0.2.0...0.2.1
+
 ## v0.2.0  - 2025-11-24
 
 **Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/v0.1.0...v0.2.0
