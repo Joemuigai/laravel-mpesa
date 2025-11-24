@@ -39,9 +39,6 @@ A comprehensive, production-ready Laravel package for integrating with Safaricom
 -   [License](#license)
 -   [Support](#support)
 
-## API Error Codes
-
-For a comprehensive list of error codes returned by each M-Pesa API, see the [API_ERROR_CODES.md](file:///var/www/laravel-mpesa/API_ERROR_CODES.md) file.
 
 ## Features
 
