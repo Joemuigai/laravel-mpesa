@@ -3,7 +3,7 @@
 This document lists the **ResultCode** values returned by Safaricom's M-Pesa Daraja APIs and their meanings. Each API can return a subset of these codes; the tables below show the most common ones for each endpoint.
 
 > [!NOTE]
-> For a complete and up-to-date list of all possible result codes, please refer to the [Safaricom Developer Portal](https://developer.safaricom.co.ke/Documentation).
+> For a complete and up-to-date list of all possible result codes, please refer to the Daraja API documentation [Safaricom Developer Portal](https://daraja.safaricom.co.ke/Documentation).
 
 ---
 
