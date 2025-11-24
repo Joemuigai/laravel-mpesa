@@ -1,589 +1,919 @@
-<!-- get laravel-mpesa png -->
-![Laravel Mpesa Package](./.github/art/laravel-mpesa.png)
+# Laravel M-Pesa
+
+```
+ _                               _   __  __       ____
+| |                             | | |  \/  |     |  _ \
+| |     __ _ _ __ __ ___   _____| | | \  / |_____| |_) | ___  ___  __ _
+| |    / _` | '__/ _` \ \ / / _ \ | | |\/| |_____|  __/ / _ \/ __|/ _` |
+| |___| (_| | | | (_| |\ V /  __/ | | |  | |     | |   |  __/\__ \ (_| |
+|______\__,_|_|  \__,_| \_/ \___|_| |_|  |_|     |_|    \___||___/\__,_|
+
+                              by Joemuigai
+```
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/joemuigai/laravel-mpesa.svg?style=flat-square)](https://packagist.org/packages/joemuigai/laravel-mpesa)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/joemuigai/laravel-mpesa/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/joemuigai/laravel-mpesa/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/joemuigai/laravel-mpesa/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/joemuigai/laravel-mpesa/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/joemuigai/laravel-mpesa/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/joemuigai/laravel-mpesa/actions/workflows/run-tests.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/joemuigai/laravel-mpesa.svg?style=flat-square)](https://packagist.org/packages/joemuigai/laravel-mpesa)
 
-A Laravel package for integrating with **Safaricom M-Pesa (Daraja)**, focusing on:
+A comprehensive, production-ready Laravel package for integrating with Safaricom's M-Pesa Daraja API. Built for both single-merchant applications and multi-tenant SaaS platforms.
 
-- STK Push (M-Pesa Express)
-- C2B (CustomerToBusiness RegisterURL)
-- B2C (BusinessToCustomer)
-- Transaction Status
-- Pull Transaction
+## Table of Contents
 
-It is designed for both **single-merchant apps** and **multi-tenant/platforms** where each client onboards their own Daraja credentials.
+-   [Features](#features)
+-   [Requirements](#requirements)
+-   [Installation](#installation)
+-   [Configuration](#configuration)
+-   [API Reference](#api-reference)
+-   [Multi-Tenant Usage](#multi-tenant-usage)
+-   [Error Handling](#error-handling)
+-   [Production Checklist](#production-checklist)
+-   [Testing](#testing)
+-   [Configuration Options](#configuration-options)
+-   [Best Practices](#best-practices)
+-   [Changelog](#changelog)
+-   [Contributing](#contributing)
+-   [Security](#security)
+-   [Credits](#credits)
+-   [License](#license)
+-   [Support](#support)
+
+## Features
+
+✨ **Complete API Coverage** - 11 M-Pesa APIs supported  
+🏢 **Multi-Tenant Ready** - Database-driven account management  
+💪 **Production Optimized** - HTTP retries, caching, and failsafe mechanisms  
+🎯 **Flexible** - Paybill & Till Number (Buy Goods) support  
+🔧 **Developer Friendly** - Interactive installation, IDE autocomplete  
+🧪 **Well Tested** - Comprehensive test suite  
+📚 **Type Safe** - Full PHPDoc annotations
+
+## Requirements
+
+-   PHP 8.4+
+-   Laravel 11.0+ or 12.0+
 
 ## Installation
 
-You can install the package via composer:
+Install via Composer:
 
 ```bash
 composer require joemuigai/laravel-mpesa
 ```
 
-You can publish and run the migrations with:
+Run the interactive installation command:
 
 ```bash
+php artisan mpesa:install
+```
+
+The installation wizard will guide you through:
+
+1. **Scenario Selection** - Single account, multi-tenant, or hybrid
+2. **API Selection** - Choose which M-Pesa APIs you'll use
+3. **Transaction Type** - Paybill, Till Number, or both
+4. **Environment Setup** - Optionally add variables to `.env`
+
+### Manual Installation
+
+If you prefer manual setup:
+
+```bash
+# Publish config
+php artisan vendor:publish --tag="laravel-mpesa-config"
+
+# Publish migrations (multi-tenant only)
 php artisan vendor:publish --tag="laravel-mpesa-migrations"
+```
+
+## Configuration
+
+### Environment Variables
+
+Add your M-Pesa credentials to `.env`:
+
+```env
+# Core Credentials
+MPESA_CONSUMER_KEY=your_consumer_key
+MPESA_CONSUMER_SECRET=your_consumer_secret
+MPESA_ENVIRONMENT=sandbox  # or production
+
+# STK Push (Lipa Na M-Pesa Online)
+MPESA_STK_SHORTCODE=174379
+MPESA_STK_PASSKEY=your_passkey
+MPESA_STK_CALLBACK_URL=https://yourdomain.com/mpesa/callback
+MPESA_STK_DEFAULT_TYPE=paybill  # or buy_goods
+
+# B2C (optional)
+MPESA_B2C_SHORTCODE=600000
+MPESA_INITIATOR_NAME=testapi
+MPESA_INITIATOR_PASSWORD=your_password
+
+# Multi-Tenant (optional)
+MPESA_ACCOUNT_DRIVER=database
+MPESA_ACCOUNT_MODEL=App\Models\MpesaAccount
+```
+
+### Multi-Tenant Setup
+
+For SaaS platforms supporting multiple merchants:
+
+1. **Run migrations**:
+
+```bash
 php artisan migrate
 ```
 
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag="laravel-mpesa-config"
-```
-
-This is the contents of the published config file:
+2. **Create accounts** in your database:
 
 ```php
-return [
+use App\Models\MpesaAccount;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Account Driver (single app vs multi-account platform)
-    |--------------------------------------------------------------------------
-    |
-    | single   -> Use the credentials defined in this file / env.
-    | database -> Load credentials per account (e.g. per tenant/merchant)
-    |            from an Eloquent model that you control.
-    |
-    | For a SaaS/platform where each client onboards their own Daraja account:
-    |   - Set MPESA_ACCOUNT_DRIVER=database
-    |   - Point "model" to your MpesaAccount model.
-    */
-
-    'accounts' => [
-        'driver' => env('MPESA_ACCOUNT_DRIVER', 'single'), // single|database
-
-        // Only used when driver = database
-        'model' => env('MPESA_ACCOUNT_MODEL', 'App\\Models\\MpesaAccount'),
-
-        // Caching of loaded account credentials (in seconds)
-        'cache_ttl' => env('MPESA_ACCOUNT_CACHE_TTL', 300),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Daraja App Credentials
-    |--------------------------------------------------------------------------
-    |
-    | One Daraja app usually has one consumer key/secret and multiple APIs
-    | (C2B, STK, B2C, etc.) enabled on it. So by default we keep credentials
-    | in a single place.
-    */
-
+MpesaAccount::create([
+    'tenant_id' => 'tenant-123',
+    'name' => 'Client Business',
     'credentials' => [
-        'consumer_key'    => env('MPESA_CONSUMER_KEY'),
-        'consumer_secret' => env('MPESA_CONSUMER_SECRET'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Mpesa Environment
-    |--------------------------------------------------------------------------
-    */
-
-    'environment' => env('MPESA_ENVIRONMENT', 'sandbox'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Base URLs
-    |--------------------------------------------------------------------------
-    */
-
-    'base_urls' => [
-        'sandbox'    => env('MPESA_BASE_URL_SANDBOX', 'https://sandbox.safaricom.co.ke'),
-        'production' => env('MPESA_BASE_URL_PRODUCTION', 'https://api.safaricom.co.ke'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Collections (how customers pay you)
-    |--------------------------------------------------------------------------
-    |
-    | This block models how money comes IN.
-    */
-
-    'collections' => [
-
-        /*
-         | mode:
-         |   - 'buy_goods' → primarily using till numbers
-         |   - 'paybill'   → primarily using paybill + account number
-         |   - 'hybrid'    → both; your app chooses per transaction
-         */
-        'mode' => env('MPESA_COLLECTION_MODE', 'buy_goods'), // buy_goods|paybill|hybrid
-
-        // Buy Goods (Till Numbers)
-        'buy_goods' => [
-
-            // Default till used when you don't explicitly choose one
-            'default_till' => env('MPESA_BUY_GOODS_TILL', '174379'),
-
-            /*
-             | Optional static branch tills.
-             |
-             | For real platforms you’ll mirror tills in the database and
-             | resolve them via the "database" account driver instead.
-             */
-            'tills' => [],
-        ],
-
-        // Paybill (Shortcode + Account Number)
-        'paybill' => [
-
-            // Main paybill shortcode
-            'shortcode' => env('MPESA_PAYBILL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE')),
-
-            /*
-             | Default account reference when you are not generating a custom
-             | account number per invoice/customer.
-             */
-            'default_account' => env('MPESA_PAYBILL_ACCOUNT'),
+        'consumer_key' => 'client_key',
+        'consumer_secret' => 'client_secret',
+        'stk' => [
+            'shortcode' => '600001',
+            'passkey' => 'client_passkey',
+            'callback_url' => 'https://client.com/callback',
+            'default_type' => 'till',
         ],
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | C2B (Customer → Business)
-    |--------------------------------------------------------------------------
-    |
-    | C2B mostly cares about the shortcode and callback URLs. The access
-    | token for C2B will come from the top-level "credentials".
-    */
-
-    'c2b' => [
-        'shortcode' => env(
-            'MPESA_C2B_SHORTCODE',
-            env('MPESA_PAYBILL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE'))
-        ),
-
-        'validation_url'   => env('MPESA_C2B_VALIDATION_URL'),
-        'confirmation_url' => env('MPESA_C2B_CONFIRMATION_URL'),
-
-        /*
-         | Used by the CustomerToBusinessRegisterURL API:
-         |   - "Completed" → always send to your URLs
-         |   - "Cancelled" → only failed transactions
-         */
-        'response_type' => env('MPESA_C2B_RESPONSE_TYPE', 'Completed'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | B2C (Business → Customer)
-    |--------------------------------------------------------------------------
-    |
-    | Uses the top-level "credentials" for auth. Dynamic things like amount
-    | and PartyB are passed per request.
-    */
-
-    'b2c' => [
-        // Paybill/shortcode the funds are sent FROM (PartyA)
-        'shortcode' => env(
-            'MPESA_B2C_SHORTCODE',
-            env('MPESA_PAYBILL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE'))
-        ),
-
-        /*
-         | Default CommandID. Can be overridden per request.
-         | Allowed (Daraja docs):
-         |   - SalaryPayment
-         |   - BusinessPayment
-         |   - PromotionPayment
-         */
-        'command_id' => env('MPESA_B2C_COMMAND_ID', 'BusinessPayment'),
-
-        // Where Safaricom sends B2C callbacks
-        'result_url'  => env('MPESA_B2C_RESULT_URL'),
-        'timeout_url' => env('MPESA_B2C_TIMEOUT_URL'),
-
-        'defaults' => [
-            'remarks'  => env('MPESA_B2C_DEFAULT_REMARKS', 'B2C Payment'),
-            'occasion' => env('MPESA_B2C_DEFAULT_OCCASION'),
-        ],
-
-        'constraints' => [
-            'remarks_max'  => 100,
-            'occasion_max' => 100,
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Transaction Status (Query API)
-    |--------------------------------------------------------------------------
-    |
-    | Used to check status of a previous M-Pesa transaction.
-    */
-
-    'transaction_status' => [
-        // Usually "TransactionStatusQuery"
-        'command_id' => env('MPESA_TXN_STATUS_COMMAND_ID', 'TransactionStatusQuery'),
-
-        // Who is asking about the transaction (shortcode or MSISDN)
-        'party_a' => env(
-            'MPESA_TXN_STATUS_PARTY_A',
-            env('MPESA_PAYBILL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE'))
-        ),
-
-        /*
-         | IdentifierType:
-         |   1 = MSISDN
-         |   2 = Till number
-         |   4 = Shortcode
-         */
-        'identifier_type' => env('MPESA_TXN_STATUS_IDENTIFIER_TYPE', 4),
-
-        'result_url'  => env('MPESA_STATUS_RESULT_URL'),
-        'timeout_url' => env('MPESA_STATUS_TIMEOUT_URL'),
-
-        'defaults' => [
-            'remarks'  => env('MPESA_TXN_STATUS_DEFAULT_REMARKS', 'Transaction Status Query'),
-            'occasion' => env('MPESA_TXN_STATUS_DEFAULT_OCCASION'),
-        ],
-
-        'constraints' => [
-            'remarks_max'  => 100,
-            'occasion_max' => 100,
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Pull Transaction API
-    |--------------------------------------------------------------------------
-    |
-    | Covers:
-    |  - PullTransaction Register URL
-    |  - PullTransaction Query (date range is per-call).
-    */
-
-    'pull' => [
-        // ShortCode whose transactions you’re pulling
-        'shortcode' => env(
-            'MPESA_PULL_SHORTCODE',
-            env('MPESA_PAYBILL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE'))
-        ),
-
-        'register' => [
-            // Value as per Daraja docs
-            'request_type'     => env('MPESA_PULL_REQUEST_TYPE'),
-            // MSISDN in 2547XXXXXXXX format
-            'nominated_number' => env('MPESA_PULL_NOMINATED_MSISDN'),
-            // Where Safaricom sends notifications for the Pull API
-            'callback_url'     => env('MPESA_PULL_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | STK Push (Lipa na Mpesa Online)
-    |--------------------------------------------------------------------------
-    */
-
-    'stk' => [
-        // BusinessShortCode / Till used by default for STK
-        'shortcode' => env(
-            'MPESA_STK_SHORTCODE',
-            env('MPESA_BUSINESS_SHORTCODE', '174379')
-        ),
-
-        // STK Passkey (used to build Password = base64(shortcode + passkey + timestamp))
-        'passkey' => env('MPESA_STK_PASSKEY', env(
-            'SAFARICOM_PASSKEY',
-            // Official sandbox passkey; do NOT use in production
-            'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'
-        )),
-
-        // Where Safaricom sends STK results
-        'callback_url' => env('MPESA_STK_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
-
-        // Default TransactionType values (can be overridden per call)
-        'transaction_types' => [
-            'paybill'   => env('MPESA_STK_TYPE_PAYBILL', 'CustomerPayBillOnline'),
-            'buy_goods' => env('MPESA_STK_TYPE_BUY_GOODS', 'CustomerBuyGoodsOnline'),
-        ],
-
-        'defaults' => [
-            'account_reference' => env('MPESA_STK_DEFAULT_ACCOUNT_REF'),
-            'transaction_desc'  => env('MPESA_STK_DEFAULT_DESC', 'Payment'),
-        ],
-
-        'constraints' => [
-            'account_reference_max' => 12,  // per Daraja docs
-            'transaction_desc_max'  => 13,  // per Daraja docs
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Legacy Till Shortcut (for backwards compatibility)
-    |--------------------------------------------------------------------------
-    */
-
-    'till_number' => env('MPESA_BUY_GOODS_TILL', '174379'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Initiator Credentials (B2C / B2B / Reversals / Balance / Status)
-    |--------------------------------------------------------------------------
-    */
-
-    'initiator' => [
-        'name'     => env('MPESA_INITIATOR_NAME', 'testapi'),
-        'password' => env('MPESA_INITIATOR_PASSWORD'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Callback URLs (grouped by API)
-    |--------------------------------------------------------------------------
-    */
-
-    'callbacks' => [
-        'default' => env('MPESA_CALLBACK_URL'),
-
-        'c2b' => [
-            'validation'   => env('MPESA_C2B_VALIDATION_URL'),
-            'confirmation' => env('MPESA_C2B_CONFIRMATION_URL'),
-        ],
-
-        'b2c' => [
-            'result'  => env('MPESA_B2C_RESULT_URL'),
-            'timeout' => env('MPESA_B2C_TIMEOUT_URL'),
-        ],
-
-        'status' => [
-            'result'  => env('MPESA_STATUS_RESULT_URL'),
-            'timeout' => env('MPESA_STATUS_TIMEOUT_URL'),
-        ],
-
-        'balance' => [
-            'result'  => env('MPESA_BALANCE_RESULT_URL'),
-            'timeout' => env('MPESA_BALANCE_TIMEOUT_URL'),
-        ],
-
-        'reversal' => [
-            'result'  => env('MPESA_REVERSAL_RESULT_URL'),
-            'timeout' => env('MPESA_REVERSAL_TIMEOUT_URL'),
-        ],
-
-        'b2b' => [
-            'result'  => env('MPESA_B2B_RESULT_URL'),
-            'timeout' => env('MPESA_B2B_TIMEOUT_URL'),
-        ],
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Safaricom Gateway IP Whitelist (for callbacks)
-    |--------------------------------------------------------------------------
-    */
-
-    'gateway_ips' => [
-        'enabled' => env('MPESA_GATEWAY_IP_CHECK', true),
-
-        'ips' => array_filter(
-            array_map(
-                'trim',
-                explode(
-                    ',',
-                    env('MPESA_GATEWAY_IPS', implode(',', [
-                        '196.201.214.200',
-                        '196.201.214.206',
-                        '196.201.213.114',
-                        '196.201.214.207',
-                        '196.201.214.208',
-                        '196.201.213.44',
-                        '196.201.212.127',
-                        '196.201.212.138',
-                        '196.201.212.129',
-                        '196.201.212.136',
-                        '196.201.212.74',
-                        '196.201.212.69',
-                    ]))
-                )
-            )
-        ),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Security Credentials (certificates for Initiator password encryption)
-    |--------------------------------------------------------------------------
-    |
-    | These default to the certificates bundled with this package:
-    |   vendor/joemuigai/laravel-mpesa/src/Certificates/*.cer
-    |
-    | If you really need custom certs, override via:
-    |   MPESA_CERT_SANDBOX_PATH / MPESA_CERT_PRODUCTION_PATH
-    */
-
-    'security' => [
-        'certificates' => [
-            'sandbox' => env(
-                'MPESA_CERT_SANDBOX_PATH',
-                base_path('vendor/joemuigai/laravel-mpesa/src/Certificates/SandboxCertificate.cer')
-            ),
-
-            'production' => env(
-                'MPESA_CERT_PRODUCTION_PATH',
-                base_path('vendor/joemuigai/laravel-mpesa/src/Certificates/ProductionCertificate.cer')
-            ),
-        ],
-
-        // Cache generated SecurityCredential for this many seconds
-        'cache_ttl' => env('MPESA_SECURITY_CREDENTIAL_CACHE_TTL', 3600),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | HTTP Client Options
-    |--------------------------------------------------------------------------
-    */
-
-    'http' => [
-        'timeout'         => env('MPESA_HTTP_TIMEOUT', 30),
-        'connect_timeout' => env('MPESA_HTTP_CONNECT_TIMEOUT', 10),
-        'verify'          => env('MPESA_HTTP_VERIFY', true),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Logging
-    |--------------------------------------------------------------------------
-    */
-
-    'logging' => [
-        'enabled' => env('MPESA_LOG_ENABLED', true),
-        'channel' => env('MPESA_LOG_CHANNEL'),
-    ],
-];
-
+]);
 ```
 
-Copy and adapt the following to your .env file:
+## API Reference
 
-```bash
-# Core Daraja app credentials
-MPESA_CONSUMER_KEY=your_daraja_consumer_key
-MPESA_CONSUMER_SECRET=your_daraja_consumer_secret
-MPESA_ENVIRONMENT=sandbox        # or production
+### 1. STK Push (Lipa Na M-Pesa Online)
 
-# Main shortcodes / tills
-MPESA_BUSINESS_SHORTCODE=123456  # paybill or shortcode
-MPESA_PAYBILL_SHORTCODE=123456
-MPESA_BUY_GOODS_TILL=123456
+Prompt customers to pay via M-Pesa on their phones.
 
-# STK (M-Pesa Express)
-MPESA_STK_PASSKEY=your_stk_passkey
-MPESA_STK_CALLBACK_URL=${APP_URL}/mpesa/stk/callback
-
-# Generic fallback callback
-MPESA_CALLBACK_URL=${APP_URL}/mpesa/callback
-
-# C2B (RegisterURL)
-MPESA_C2B_SHORTCODE=${MPESA_PAYBILL_SHORTCODE}
-MPESA_C2B_VALIDATION_URL=${APP_URL}/mpesa/c2b/validate
-MPESA_C2B_CONFIRMATION_URL=${APP_URL}/mpesa/c2b/confirm
-MPESA_C2B_RESPONSE_TYPE=Completed
-
-# B2C (Business to Customer)
-MPESA_INITIATOR_NAME=your_initiator_username
-MPESA_INITIATOR_PASSWORD=your_initiator_password
-MPESA_B2C_SHORTCODE=${MPESA_BUSINESS_SHORTCODE}
-MPESA_B2C_RESULT_URL=${APP_URL}/mpesa/b2c/result
-MPESA_B2C_TIMEOUT_URL=${APP_URL}/mpesa/b2c/timeout
-MPESA_B2C_COMMAND_ID=BusinessPayment
-
-# Transaction Status
-MPESA_STATUS_RESULT_URL=${APP_URL}/mpesa/status/result
-MPESA_STATUS_TIMEOUT_URL=${APP_URL}/mpesa/status/timeout
-
-# Pull Transaction API
-MPESA_PULL_SHORTCODE=${MPESA_BUSINESS_SHORTCODE}
-MPESA_PULL_REQUEST_TYPE=PullTransaction
-MPESA_PULL_NOMINATED_MSISDN=2547XXXXXXXX
-MPESA_PULL_CALLBACK_URL=${APP_URL}/mpesa/pull/callback
-
-# Optional: multi-account/platform mode
-# MPESA_ACCOUNT_DRIVER=database
-# MPESA_ACCOUNT_MODEL=App\\Models\\MpesaAccount
-# MPESA_ACCOUNT_CACHE_TTL=300
-
-# Optional: collection mode (buy_goods|paybill|hybrid)
-# MPESA_COLLECTION_MODE=buy_goods
-
-# Optional: custom STK behaviour
-# MPESA_STK_TYPE_PAYBILL=CustomerPayBillOnline
-# MPESA_STK_TYPE_BUY_GOODS=CustomerBuyGoodsOnline
-# MPESA_STK_DEFAULT_ACCOUNT_REF=INVOICE
-# MPESA_STK_DEFAULT_DESC=Payment
-
-# Optional: Transaction Status defaults
-# MPESA_TXN_STATUS_PARTY_A=${MPESA_BUSINESS_SHORTCODE}
-# MPESA_TXN_STATUS_IDENTIFIER_TYPE=4
-# MPESA_TXN_STATUS_DEFAULT_REMARKS="Transaction Status Query"
-
-# Optional: gateway IP checks
-MPESA_GATEWAY_IP_CHECK=true
-# MPESA_GATEWAY_IPS=196.201.214.200,196.201.214.206,...
-
-# Optional: certificate overrides (package defaults are usually enough)
-# MPESA_CERT_SANDBOX_PATH=/absolute/path/to/SandboxCertificate.cer
-# MPESA_CERT_PRODUCTION_PATH=/absolute/path/to/ProductionCertificate.cer
-
-# Optional: HTTP & logging
-MPESA_HTTP_TIMEOUT=30
-MPESA_HTTP_CONNECT_TIMEOUT=10
-MPESA_HTTP_VERIFY=true
-
-MPESA_LOG_ENABLED=true
-MPESA_LOG_CHANNEL=stack
-
-```
-
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag="laravel-mpesa-views"
-```
-
-## Usage
+#### Usage
 
 ```php
-$laravelMpesa = new Joemuigai\LaravelMpesa();
-echo $laravelMpesa->echoPhrase('Hello, Joemuigai!');
+use Joemuigai\LaravelMpesa\Facades\LaravelMpesa;
+
+// Basic usage
+$response = LaravelMpesa::stkPush(
+    amount: 100,
+    phoneNumber: '0712345678',
+    reference: 'INV001',
+    description: 'Payment for invoice'
+);
+
+// With till number (Buy Goods)
+$response = LaravelMpesa::withBuyGoods()
+    ->stkPush(100, '0712345678');
+
+// With paybill
+$response = LaravelMpesa::withPaybill()
+    ->stkPush(100, '0712345678', 'ACCOUNT123');
 ```
+
+#### Response
+
+```php
+[
+    'MerchantRequestID' => '29115-34620561-1',
+    'CheckoutRequestID' => 'ws_CO_191220191020363925',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Success. Request accepted for processing',
+    'CustomerMessage' => 'Success. Request accepted for processing'
+]
+```
+
+#### Callback
+
+```php
+// routes/web.php
+Route::post('/mpesa/stk-callback', function (Request $request) {
+    $data = $request->all();
+
+    if (isset($data['Body']['stkCallback'])) {
+        $callback = $data['Body']['stkCallback'];
+
+        if ($callback['ResultCode'] == 0) {
+            // Payment successful
+            $items = $callback['CallbackMetadata']['Item'];
+            $amount = $items[0]['Value'];
+            $mpesaReceipt = $items[1]['Value'];
+            $transactionDate = $items[2]['Value'];
+            $phoneNumber = $items[3]['Value'];
+
+            // Update database
+        }
+    }
+
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Success Payload:**
+
+```php
+[
+    'Body' => [
+        'stkCallback' => [
+            'MerchantRequestID' => '29115-34620561-1',
+            'CheckoutRequestID' => 'ws_CO_191220191020363925',
+            'ResultCode' => 0,
+            'ResultDesc' => 'The service request is processed successfully.',
+            'CallbackMetadata' => [
+                'Item' => [
+                    ['Name' => 'Amount', 'Value' => 100.00],
+                    ['Name' => 'MpesaReceiptNumber', 'Value' => 'NLJ7RT61SV'],
+                    ['Name' => 'TransactionDate', 'Value' => 20191219102115],
+                    ['Name' => 'PhoneNumber', 'Value' => 254712345678]
+                ]
+            ]
+        ]
+    ]
+]
+```
+
+**Failed Payload (Common codes: 1032=Cancelled, 1037=Timeout, 2001=Wrong PIN):**
+
+```php
+[
+    'Body' => [
+        'stkCallback' => [
+            'MerchantRequestID' => '29115-34620561-1',
+            'CheckoutRequestID' => 'ws_CO_191220191020363925',
+            'ResultCode' => 1032,
+            'ResultDesc' => 'Request cancelled by user'
+        ]
+    ]
+]
+```
+
+---
+
+### 2. STK Push Query
+
+Query the status of an STK Push transaction.
+
+#### Usage
+
+```php
+$status = LaravelMpesa::stkPushQuery('ws_CO_DMZ_123456');
+```
+
+#### Response
+
+```php
+[
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'The service request has been accepted successfully',
+    'MerchantRequestID' => '29115-34620561-1',
+    'CheckoutRequestID' => 'ws_CO_191220191020363925',
+    'ResultCode' => '0',
+    'ResultDesc' => 'The service request is processed successfully.'
+]
+```
+
+#### Callback
+
+No callback - synchronous response only.
+
+---
+
+### 3. C2B (Customer to Business)
+
+Receive payments from customers to your paybill or till number.
+
+#### Usage
+
+```php
+// Step 1: Register URLs (one-time setup)
+$response = LaravelMpesa::c2bRegisterUrl(
+    validationUrl: 'https://yourdomain.com/mpesa/validate',
+    confirmationUrl: 'https://yourdomain.com/mpesa/confirm'
+);
+
+// Step 2: Simulate C2B (sandbox only - for testing)
+$response = LaravelMpesa::c2bSimulate(
+    amount: 100,
+    phoneNumber: '0712345678',
+    billRefNumber: 'ACCOUNT123'
+);
+```
+
+#### Response
+
+**Register URL:**
+
+```php
+[
+    'OriginatorCoversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Success'
+]
+```
+
+**Simulate:**
+
+```php
+[
+    'OriginatorCoversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callbacks
+
+**Validation URL (sent before processing):**
+
+```php
+Route::post('/mpesa/validate', function (Request $request) {
+    // Verify transaction before accepting
+    return response()->json([
+        'ResultCode' => 0,  // 0 = Accept, Other = Reject
+        'ResultDesc' => 'Accepted'
+    ]);
+});
+```
+
+**Validation Payload:**
+
+```php
+[
+    'TransactionType' => 'Pay Bill',
+    'TransID' => 'NLJ7RT61SV',
+    'TransTime' => '20191122063845',
+    'TransAmount' => '100.00',
+    'BusinessShortCode' => '600000',
+    'BillRefNumber' => 'ACCOUNT123',
+    'MSISDN' => '254712345678',
+    'FirstName' => 'John',
+    'LastName' => 'Doe'
+]
+```
+
+**Confirmation URL (sent after success):**
+
+```php
+Route::post('/mpesa/confirm', function (Request $request) {
+    // Save transaction to database
+    Payment::create($request->all());
+
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Confirmation Payload:**
+
+```php
+[
+    'TransactionType' => 'Pay Bill',
+    'TransID' => 'NLJ7RT61SV',
+    'TransAmount' => '100.00',
+    'BusinessShortCode' => '600000',
+    'BillRefNumber' => 'ACCOUNT123',
+    'OrgAccountBalance' => '10000.00',
+    'MSISDN' => '254712345678',
+    'FirstName' => 'John',
+    'LastName' => 'Doe'
+]
+```
+
+---
+
+### 4. B2C (Business to Customer)
+
+Send money to customers' M-Pesa accounts.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::b2c(
+    amount: 100,
+    phoneNumber: '0712345678',
+    commandId: 'BusinessPayment',  // or SalaryPayment, PromotionPayment
+    remarks: 'Salary payment',
+    occasion: 'Monthly salary'
+);
+```
+
+#### Response
+
+```php
+[
+    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'OriginatorConversationID' => '16740-34861180-1',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callback
+
+**Result URL:**
+
+```php
+Route::post('/mpesa/b2c-result', function (Request $request) {
+    $result = $request->input('Result');
+
+    if ($result['ResultCode'] == 0) {
+        // Money sent successfully
+        $params = collect($result['ResultParameters']['ResultParameter'])
+            ->pluck('Value', 'Key');
+
+        $receipt = $params['TransactionReceipt'];
+        $amount = $params['TransactionAmount'];
+    }
+
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Success Payload:**
+
+```php
+[
+    'Result' => [
+        'ResultCode' => 0,
+        'ResultDesc' => 'The service request is processed successfully.',
+        'TransactionID' => 'NLJ41HAY6Q',
+        'ResultParameters' => [
+            'ResultParameter' => [
+                ['Key' => 'TransactionAmount', 'Value' => 100],
+                ['Key' => 'TransactionReceipt', 'Value' => 'NLJ41HAY6Q'],
+                ['Key' => 'B2CRecipientIsRegisteredCustomer', 'Value' => 'Y'],
+                ['Key' => 'TransactionCompletedDateTime', 'Value' => '19.12.2019 10:45:50'],
+                ['Key' => 'ReceiverPartyPublicName', 'Value' => '254712345678 - John Doe'],
+                ['Key' => 'B2CWorkingAccountAvailableFunds', 'Value' => 900000.00]
+            ]
+        ]
+    ]
+]
+```
+
+---
+
+### 5. B2B (Business to Business)
+
+Send money to other businesses.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::b2b(
+    amount: 5000,
+    receiverShortcode: '600000',
+    commandId: 'BusinessPayBill',  // or BusinessBuyGoods
+    remarks: 'Payment for services',
+    accountReference: 'ACC123'
+);
+```
+
+#### Response
+
+```php
+[
+    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'OriginatorConversationID' => '16740-34861180-1',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callback
+
+**Result URL:**
+
+```php
+Route::post('/mpesa/b2b-result', function (Request $request) {
+    $result = $request->input('Result');
+
+    if ($result['ResultCode'] == 0) {
+        // Transfer successful
+    }
+
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Payload:**
+
+```php
+[
+    'Result' => [
+        'ResultCode' => 0,
+        'ResultDesc' => 'The service request is processed successfully.',
+        'TransactionID' => 'NLJ41HAY6Q',
+        'ResultParameters' => [
+            'ResultParameter' => [
+                ['Key' => 'Amount', 'Value' => 5000],
+                ['Key' => 'TransCompletedTime', 'Value' => '20191219104550'],
+                ['Key' => 'ReceiverPartyPublicName', 'Value' => '600000 - Test Business'],
+                ['Key' => 'DebitAccountCurrentBalance', 'Value' => '5000.00']
+            ]
+        ]
+    ]
+]
+```
+
+---
+
+### 6. Transaction Status
+
+Query the status of any transaction.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::transactionStatus(
+    transactionId: 'OEI2AK4Q16',
+    partyA: '600000',
+    remarks: 'Status query'
+);
+```
+
+#### Response
+
+```php
+[
+    'OriginatorConversationID' => '16740-34861180-1',
+    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callback
+
+**Result URL:**
+
+```php
+Route::post('/mpesa/transaction-status', function (Request $request) {
+    $result = $request->input('Result');
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Payload:**
+
+```php
+[
+    'Result' => [
+        'ResultCode' => 0,
+        'TransactionID' => 'NLJ41HAY6Q',
+        'ResultParameters' => [
+            'ResultParameter' => [
+                ['Key' => 'ReceiptNo', 'Value' => 'NLJ41HAY6Q'],
+                ['Key' => 'Amount', 'Value' => 100],
+                ['Key' => 'TransactionStatus', 'Value' => 'Completed'],
+                ['Key' => 'FinalisedTime', 'Value' => 20191219104550],
+                ['Key' => 'CreditPartyName', 'Value' => '254712345678 - John Doe']
+            ]
+        ]
+    ]
+]
+```
+
+---
+
+### 7. Account Balance
+
+Check your M-Pesa account balance.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::accountBalance(
+    identifierType: '4',  // 4 = Organization shortcode
+    remarks: 'Balance check'
+);
+```
+
+#### Response
+
+```php
+[
+    'OriginatorConversationID' => '16740-34861180-1',
+    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callback
+
+**Result URL:**
+
+```php
+Route::post('/mpesa/account-balance', function (Request $request) {
+    $result = $request->input('Result');
+
+    if ($result['ResultCode'] == 0) {
+        $balance = $result['ResultParameters']['ResultParameter'][0]['Value'];
+        // Parse balance: "Working Account|KES|50000.00|..."
+    }
+
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Payload:**
+
+```php
+[
+    'Result' => [
+        'ResultCode' => 0,
+        'ResultParameters' => [
+            'ResultParameter' => [
+                ['Key' => 'AccountBalance', 'Value' => 'Working Account|KES|50000.00|50000.00|0.00|0.00&Float Account|KES|0.00|...'],
+                ['Key' => 'BOCompletedTime', 'Value' => 20191219104550]
+            ]
+        ]
+    ]
+]
+```
+
+---
+
+### 8. Reversal
+
+Reverse a completed transaction.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::reversal(
+    transactionId: 'OEI2AK4Q16',
+    amount: 100,
+    receiverParty: '254712345678',
+    remarks: 'Wrong recipient'
+);
+```
+
+#### Response
+
+```php
+[
+    'OriginatorConversationID' => '16740-34861180-1',
+    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callback
+
+**Result URL:**
+
+```php
+Route::post('/mpesa/reversal-result', function (Request $request) {
+    $result = $request->input('Result');
+
+    if ($result['ResultCode'] == 0) {
+        // Reversal successful
+    }
+
+    return response()->json(['ResultCode' => 0]);
+});
+```
+
+**Success Payload:**
+
+```php
+[
+    'Result' => [
+        'ResultCode' => 0,
+        'ResultDesc' => 'The service request is processed successfully.',
+        'TransactionID' => 'NLJ41HAY6Q',
+        'ResultParameters' => [
+            'ResultParameter' => [
+                ['Key' => 'Amount', 'Value' => 100],
+                ['Key' => 'OriginalTransactionID', 'Value' => 'OEI2AK4Q16'],
+                ['Key' => 'TransCompletedTime', 'Value' => 20191219104550],
+                ['Key' => 'CreditPartyPublicName', 'Value' => '254712345678 - John Doe']
+            ]
+        ]
+    ]
+]
+```
+
+**Failed Payload:**
+
+```php
+[
+    'Result' => [
+        'ResultCode' => 2001,
+        'ResultDesc' => 'The initiator information is invalid.'
+    ]
+]
+```
+
+---
+
+### 9. Dynamic QR Code
+
+Generate QR codes for payments.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::dynamicQr(
+    amount: 100,
+    refNo: 'INV001',
+    trxCode: 'BG',  // BG = Buy Goods, PB = Paybill
+    cpi: '174379',  // Your shortcode/till
+    size: '300'
+);
+```
+
+#### Response
+
+```php
+[
+    'ResponseCode' => 'AG_20191219_000043fdf61864fe9ff5',
+    'RequestID' => '16738-27456357-1',
+    'ResponseDescription' => 'The service request is processed successfully.',
+    'QRCode' => 'iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AQ...' // Base64 encoded image
+]
+```
+
+#### Callback
+
+No callback - synchronous response with QR code.
+
+**Display QR Code:**
+
+```php
+$qrData = $response['QRCode'];
+echo '<img src="data:image/png;base64,' . $qrData . '" />';
+```
+
+---
+
+### 10. Pull Transaction
+
+Register for pull transaction queries.
+
+#### Usage
+
+```php
+$response = LaravelMpesa::pullTransactionRegister(
+    shortcode: '600000',
+    requestType: 'Pull',
+    nominatedNumber: '254712345678'
+);
+```
+
+#### Response
+
+```php
+[
+    'OriginatorConversationID' => '16740-34861180-1',
+    'ResponseCode' => '0',
+    'ResponseDescription' => 'Accept the service request successfully.'
+]
+```
+
+#### Callback
+
+No callback for registration. Use the query endpoint to pull transactions.
+
+---
+
+## Multi-Tenant Usage
+
+Switch between accounts dynamically:
+
+```php
+// By account ID
+LaravelMpesa::forAccount('tenant-123')
+    ->stkPush(100, '0712345678');
+
+// By model instance
+$account = MpesaAccount::find($id);
+LaravelMpesa::withAccount($account)
+    ->stkPush(100, '0712345678');
+
+// Override specific settings
+LaravelMpesa::forAccount('tenant-123')
+    ->withShortcode('600001')
+    ->withBuyGoods()
+    ->stkPush(100, '0712345678');
+
+// Chain multiple overrides
+LaravelMpesa::forAccount('tenant-123')
+    ->withBuyGoods()
+    ->withShortcode('600001')
+    ->withCallbackUrl('https://custom.com/callback')
+    ->stkPush(100, '0712345678');
+```
+
+## Error Handling
+
+```php
+use Exception;
+
+try {
+    $response = LaravelMpesa::stkPush(100, '0712345678');
+} catch (Exception $e) {
+    Log::error('M-Pesa Error: ' . $e->getMessage());
+    return back()->with('error', 'Payment failed. Please try again.');
+}
+```
+
+## Production Checklist
+
+-   [ ] Set `MPESA_ENVIRONMENT=production`
+-   [ ] Use production credentials
+-   [ ] Enable SSL verification: `MPESA_HTTP_VERIFY=true`
+-   [ ] Configure proper callback URLs (HTTPS)
+-   [ ] Set up logging: `MPESA_LOG_ENABLED=true`
+-   [ ] Test all transactions in sandbox first
+-   [ ] Enable HTTP retries (default: 3)
+-   [ ] Configure timeouts appropriately
+-   [ ] Set up monitoring/alerts
+-   [ ] Secure your initiator password
 
 ## Testing
+
+Run the package tests:
 
 ```bash
 composer test
 ```
 
+Run tests with coverage:
+
+```bash
+composer test-coverage
+```
+
+## Configuration Options
+
+All configuration options are in `config/mpesa.php`:
+
+```php
+return [
+    'accounts' => [
+        'driver' => 'single',  // or 'database'
+        'model' => MpesaAccount::class,
+        'cache_ttl' => 300,
+    ],
+
+    'http' => [
+        'timeout' => 30,
+        'connect_timeout' => 10,
+        'retries' => 3,
+        'verify' => true,
+    ],
+
+    'logging' => [
+        'enabled' => true,
+        'channel' => null,  // Uses default channel
+    ],
+];
+```
+
+## Best Practices
+
+1. **Always validate phone numbers** before sending to M-Pesa
+2. **Use unique transaction references** for tracking
+3. **Implement idempotency** in callback handlers
+4. **Log all transactions** for audit trails
+5. **Handle callbacks asynchronously** with queues
+6. **Test thoroughly in sandbox** before production
+7. **Monitor failed transactions** and set up alerts
+8. **Keep credentials secure** (use environment variables)
+9. **Implement rate limiting** on payment endpoints
+10. **Use database driver for multi-tenant** applications
+
 ## Changelog
 
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+Please see [CHANGELOG](CHANGELOG.md) for more information on recent changes.
 
 ## Contributing
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+Contributions are welcome! Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
 ## Security Vulnerabilities
 
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
+If you discover a security vulnerability, please email joemuigai004@gmail.com.
 
 ## Credits
 
-- [Joemuigai](https://github.com/Joemuigai)
-- [All Contributors](../../contributors)
+-   [Joemuigai](https://github.com/joemuigai)
+-   [All Contributors](../../contributors)
 
 ## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+
+## Support
+
+-   **Issues**: [GitHub Issues](https://github.com/joemuigai/laravel-mpesa/issues)
+-   **Documentation**: [GitHub Wiki](https://github.com/joemuigai/laravel-mpesa/wiki)
+-   **Email**: joemuigai004@gmail.com
+
+---
+
+Made with ❤️ in Kenya 🇰🇪

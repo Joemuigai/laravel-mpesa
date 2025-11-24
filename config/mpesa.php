@@ -407,6 +407,7 @@ return [
     'http' => [
         'timeout' => env('MPESA_HTTP_TIMEOUT', 30),
         'connect_timeout' => env('MPESA_HTTP_CONNECT_TIMEOUT', 10),
+        'retries' => env('MPESA_HTTP_RETRIES', 3),
         'verify' => env('MPESA_HTTP_VERIFY', true),
     ],
 

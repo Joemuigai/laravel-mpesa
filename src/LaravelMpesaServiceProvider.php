@@ -19,7 +19,23 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             ->name('laravel-mpesa')
             ->hasConfigFile()
             ->hasViews()
-            ->hasMigration('create_mpesa_transactions_table')
+            ->hasMigration('create_mpesa_accounts_table')
             ->hasCommand(LaravelMpesaCommand::class);
+    }
+
+    public function packageRegistered(): void
+    {
+        // Register LaravelMpesa as a singleton
+        $this->app->singleton(LaravelMpesa::class, function ($app) {
+            return new LaravelMpesa;
+        });
+
+        // Register facade alias
+        $this->app->alias(LaravelMpesa::class, 'laravel-mpesa');
+    }
+
+    public function packageBooted(): void
+    {
+        // Additional boot logic can be added here if needed
     }
 }
