@@ -27,6 +27,8 @@ A comprehensive, production-ready Laravel package for integrating with Safaricom
 -   [Multi-Tenant Usage](#multi-tenant-usage)
 -   [Error Handling](#error-handling)
 -   [Production Checklist](#production-checklist)
+-   [Usage](#usage)
+-   [API Error Codes](#api-error-codes)
 -   [Testing](#testing)
 -   [Configuration Options](#configuration-options)
 -   [Best Practices](#best-practices)
@@ -36,6 +38,10 @@ A comprehensive, production-ready Laravel package for integrating with Safaricom
 -   [Credits](#credits)
 -   [License](#license)
 -   [Support](#support)
+
+## API Error Codes
+
+For a comprehensive list of error codes returned by each M-Pesa API, see the [API_ERROR_CODES.md](file:///var/www/laravel-mpesa/API_ERROR_CODES.md) file.
 
 ## Features
 
@@ -146,31 +152,15 @@ MpesaAccount::create([
 
 ## API Reference
 
+For detailed usage examples, expected responses, callbacks, and payloads for each M-Pesa API, see the dedicated [USAGE.md](file:///var/www/laravel-mpesa/USAGE.md) file.
+
 ### 1. STK Push (Lipa Na M-Pesa Online)
 
 Prompt customers to pay via M-Pesa on their phones.
 
 #### Usage
 
-```php
-use Joemuigai\LaravelMpesa\Facades\LaravelMpesa;
-
-// Basic usage
-$response = LaravelMpesa::stkPush(
-    amount: 100,
-    phoneNumber: '0712345678',
-    reference: 'INV001',
-    description: 'Payment for invoice'
-);
-
-// With till number (Buy Goods)
-$response = LaravelMpesa::withBuyGoods()
-    ->stkPush(100, '0712345678');
-
-// With paybill
-$response = LaravelMpesa::withPaybill()
-    ->stkPush(100, '0712345678', 'ACCOUNT123');
-```
+For detailed usage examples, see the dedicated [USAGE.md](file:///var/www/laravel-mpesa/USAGE.md) file.
 
 #### Response
 
