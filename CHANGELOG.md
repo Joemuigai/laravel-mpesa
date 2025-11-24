@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-mpesa` will be documented in this file.
 
+## 0.2.2 - 2025-11-24
+
+### What's Changed
+
+* docs: Update Safaricom Developer Portal link and description to refle… by @Joemuigai in https://github.com/Joemuigai/laravel-mpesa/pull/5
+
+**Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/0.2.1...0.2.2
+
 ## 0.2.1 - 2025-11-24
 
 ### What's Changed
