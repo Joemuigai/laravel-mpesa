@@ -2,33 +2,70 @@
 
 This document provides detailed usage examples, expected responses, callbacks, and payloads for each of the supported M-Pesa APIs.
 
+> [!TIP] > **Production Tip**: Always wrap your M-Pesa API calls in `try-catch` blocks to handle connection errors or API exceptions gracefully.
+
+## Table of Contents
+
+1. [STK Push](#1-stk-push-lipa-na-m-pesa-online)
+2. [STK Push Query](#2-stk-push-query)
+3. [C2B (Customer to Business)](#3-c2b-customer-to-business)
+4. [B2C (Business to Customer)](#4-b2c-business-to-customer)
+5. [B2B (Business to Business)](#5-b2b-business-to-business)
+6. [Transaction Status](#6-transaction-status)
+7. [Account Balance](#7-account-balance)
+8. [Reversal](#8-reversal)
+9. [Dynamic QR Code](#9-dynamic-qr-code)
+10. [Pull Transaction](#10-pull-transaction)
+11. [Multi-Tenant Usage](#11-multi-tenant-usage)
+
+---
+
+## Prerequisites
+
+```php
+use Joemuigai\LaravelMpesa\Facades\LaravelMpesa;
+use Illuminate\Support\Facades\Log;
+```
+
 ---
 
 ## 1. STK Push (Lipa Na M-Pesa Online)
 
+Initiate a payment prompt on the customer's phone.
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::stkPush(
-    amount: 1500,
-    phoneNumber: '0712345678',
-    reference: 'INV-1001',
-    description: 'Invoice payment'
-);
+try {
+    $response = LaravelMpesa::stkPush(
+        amount: 1500,
+        phoneNumber: '254712345678', // Format: 2547XXXXXXXX
+        reference: 'INV-1001',
+        description: 'Invoice payment'
+    );
+
+    // Save merchant_request_id and checkout_request_id to database
+    $merchantRequestId = $response['MerchantRequestID'];
+    $checkoutRequestId = $response['CheckoutRequestID'];
+
+} catch (\Exception $e) {
+    Log::error("STK Push Failed: " . $e->getMessage());
+    // Handle error (e.g., notify user)
+}
 ```
 
 ### With Paybill (default)
 
 ```php
 $response = LaravelMpesa::withPaybill()
-    ->stkPush(1500, '0712345678', 'INV-1001');
+    ->stkPush(1500, '254712345678', 'INV-1001');
 ```
 
 ### With Till (Buy Goods)
 
 ```php
 $response = LaravelMpesa::withBuyGoods()
-    ->stkPush(1500, '0712345678');
+    ->stkPush(1500, '254712345678');
 ```
 
 ### Expected Response
@@ -45,535 +82,347 @@ $response = LaravelMpesa::withBuyGoods()
 
 ### Callback (Route)
 
+Define this route in `routes/web.php` or `routes/api.php` and ensure it matches `MPESA_STK_CALLBACK_URL` in your `.env`.
+
 ```php
+use Illuminate\Http\Request;
+
 Route::post('/mpesa/stk-callback', function (Request $request) {
     $data = $request->all();
+
+    Log::info('STK Callback:', $data);
+
     if (isset($data['Body']['stkCallback'])) {
         $callback = $data['Body']['stkCallback'];
+
         if ($callback['ResultCode'] == 0) {
+            // Payment successful
             $items = $callback['CallbackMetadata']['Item'];
-            $amount = $items[0]['Value'];
-            $mpesaReceipt = $items[1]['Value'];
-            $transactionDate = $items[2]['Value'];
-            $phoneNumber = $items[3]['Value'];
-            // Update database
+
+            // Helper to extract values safely
+            $getItem = fn($name) => collect($items)->firstWhere('Name', $name)['Value'] ?? null;
+
+            $amount = $getItem('Amount');
+            $mpesaReceipt = $getItem('MpesaReceiptNumber');
+            $transactionDate = $getItem('TransactionDate');
+            $phoneNumber = $getItem('PhoneNumber');
+
+            // TODO: Update your database using CheckoutRequestID
+        } else {
+            // Payment failed/cancelled
+            $reason = $callback['ResultDesc'];
         }
     }
+
     return response()->json(['ResultCode' => 0]);
 });
-```
-
-#### Success Payload
-
-```php
-[ 'Body' => [
-    'stkCallback' => [
-        'MerchantRequestID' => '29115-34620561-1',
-        'CheckoutRequestID' => 'ws_CO_191220191020363925',
-        'ResultCode' => 0,
-        'ResultDesc' => 'The service request is processed successfully.',
-        'CallbackMetadata' => [
-            'Item' => [
-                ['Name' => 'Amount', 'Value' => 100.00],
-                ['Name' => 'MpesaReceiptNumber', 'Value' => 'NLJ7RT61SV'],
-                ['Name' => 'TransactionDate', 'Value' => 20191219102115],
-                ['Name' => 'PhoneNumber', 'Value' => 254712345678]
-            ]
-        ]
-    ]
-] ]
-```
-
-#### Failed Payload (common codes)
-
-```php
-[ 'Body' => [
-    'stkCallback' => [
-        'MerchantRequestID' => '29115-34620561-1',
-        'CheckoutRequestID' => 'ws_CO_191220191020363925',
-        'ResultCode' => 1032,
-        'ResultDesc' => 'Request cancelled by user'
-    ]
-] ]
 ```
 
 ---
 
 ## 2. STK Push Query
 
+Check the status of an STK Push if the callback is delayed or missing.
+
 ### Usage
 
 ```php
-$status = LaravelMpesa::stkPushQuery('ws_CO_DMZ_123456');
+try {
+    $status = LaravelMpesa::stkPushQuery(
+        checkoutRequestId: 'ws_CO_191220191020363925'
+    );
+
+    if ($status['ResultCode'] == '0') {
+        // Transaction was successful
+    }
+} catch (\Exception $e) {
+    Log::error("STK Query Failed: " . $e->getMessage());
+}
 ```
-
-### Expected Response
-
-```php
-[
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'The service request has been accepted successfully',
-    'MerchantRequestID' => '29115-34620561-1',
-    'CheckoutRequestID' => 'ws_CO_191220191020363925',
-    'ResultCode' => '0',
-    'ResultDesc' => 'The service request is processed successfully.'
-]
-```
-
-### Callback
-
-No callback – synchronous response only.
 
 ---
 
 ## 3. C2B (Customer to Business)
 
-### Register URLs & Simulate
+### Register URLs (One-time setup)
+
+You only need to run this once (e.g., via a command or seeder) to tell M-Pesa where to send callbacks.
 
 ```php
-LaravelMpesa::c2bRegisterUrl(
-    validationUrl: 'https://yourdomain.com/mpesa/validate',
-    confirmationUrl: 'https://yourdomain.com/mpesa/confirm'
-);
-
-LaravelMpesa::c2bSimulate(
-    amount: 100,
-    phoneNumber: '0712345678',
-    billRefNumber: 'ACCOUNT123'
-);
+try {
+    $response = LaravelMpesa::c2bRegisterUrl(
+        validationUrl: 'https://yourdomain.com/api/mpesa/validate',
+        confirmationUrl: 'https://yourdomain.com/api/mpesa/confirm'
+    );
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
 
-### Register URL Response
+### Simulate Transaction (Sandbox Only)
 
 ```php
-[
-    'OriginatorCoversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Success'
-]
-```
-
-### Simulate Response
-
-```php
-[
-    'OriginatorCoversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
+try {
+    $response = LaravelMpesa::c2bSimulate(
+        amount: 100,
+        phoneNumber: '254712345678',
+        billRefNumber: 'ACCOUNT123'
+    );
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
 
 ### Validation Callback
 
+M-Pesa asks you: "Should I accept this payment?"
+
 ```php
 Route::post('/mpesa/validate', function (Request $request) {
-    return response()->json([
-        'ResultCode' => 0,
-        'ResultDesc' => 'Accepted'
-    ]);
+    // Logic to validate account number, amount, etc.
+    $isValid = true;
+
+    if ($isValid) {
+        return response()->json([
+            'ResultCode' => 0,
+            'ResultDesc' => 'Accepted'
+        ]);
+    } else {
+        return response()->json([
+            'ResultCode' => 1,
+            'ResultDesc' => 'Rejected'
+        ]);
+    }
 });
-```
-
-#### Validation Payload
-
-```php
-[
-    'TransactionType' => 'Pay Bill',
-    'TransID' => 'NLJ7RT61SV',
-    'TransTime' => '20191122063845',
-    'TransAmount' => '100.00',
-    'BusinessShortCode' => '600000',
-    'BillRefNumber' => 'ACCOUNT123',
-    'MSISDN' => '254712345678',
-    'FirstName' => 'John',
-    'LastName' => 'Doe'
-]
 ```
 
 ### Confirmation Callback
 
+M-Pesa tells you: "Payment completed."
+
 ```php
 Route::post('/mpesa/confirm', function (Request $request) {
-    Payment::create($request->all());
+    // Save transaction to database
+    // $request->input('TransID'), $request->input('TransAmount'), etc.
+
     return response()->json(['ResultCode' => 0]);
 });
-```
-
-#### Confirmation Payload
-
-```php
-[
-    'TransactionType' => 'Pay Bill',
-    'TransID' => 'NLJ7RT61SV',
-    'TransAmount' => '100.00',
-    'BusinessShortCode' => '600000',
-    'BillRefNumber' => 'ACCOUNT123',
-    'OrgAccountBalance' => '10000.00',
-    'MSISDN' => '254712345678',
-    'FirstName' => 'John',
-    'LastName' => 'Doe'
-]
 ```
 
 ---
 
 ## 4. B2C (Business to Customer)
 
+Send money to a customer (e.g., refunds, salaries, winnings).
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::b2c([
-    'initiator_name' => env('MPESA_INITIATOR_NAME'),
-    'security_credential' => LaravelMpesa::generateSecurityCredential(),
-    'command_id' => 'BusinessPayment',
-    'amount' => 100,
-    'party_a' => env('MPESA_B2C_SHORTCODE'),
-    'party_b' => '0712345678',
-    'remarks' => 'Salary payment',
-    'occasion' => 'Monthly salary'
-]);
+try {
+    $response = LaravelMpesa::b2c(
+        amount: 100,
+        phoneNumber: '254712345678',
+        commandId: 'BusinessPayment', // Options: SalaryPayment, BusinessPayment, PromotionPayment
+        remarks: 'Refund',
+        occasion: 'Holiday'
+    );
+
+    // Store ConversationID and OriginatorConversationID
+} catch (\Exception $e) {
+    Log::error("B2C Failed: " . $e->getMessage());
+}
 ```
 
-### Expected Response
+### Callback
 
-```php
-[
-    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'OriginatorConversationID' => '16740-34861180-1',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
-```
-
-### Result URL Callback
+Configure `MPESA_B2C_RESULT_URL` and `MPESA_B2C_TIMEOUT_URL` in `.env`.
 
 ```php
 Route::post('/mpesa/b2c-result', function (Request $request) {
     $result = $request->input('Result');
+
     if ($result['ResultCode'] == 0) {
-        $params = collect($result['ResultParameters']['ResultParameter'])
-            ->pluck('Value', 'Key');
+        // Success
+        $params = collect($result['ResultParameters']['ResultParameter'])->pluck('Value', 'Key');
         $receipt = $params['TransactionReceipt'];
-        $amount = $params['TransactionAmount'];
     }
+
     return response()->json(['ResultCode' => 0]);
 });
-```
-
-#### Success Payload
-
-```php
-[ 'Result' => [
-    'ResultCode' => 0,
-    'ResultDesc' => 'The service request is processed successfully.',
-    'TransactionID' => 'NLJ41HAY6Q',
-    'ResultParameters' => [
-        'ResultParameter' => [
-            ['Key' => 'TransactionAmount', 'Value' => 100],
-            ['Key' => 'TransactionReceipt', 'Value' => 'NLJ41HAY6Q'],
-            ['Key' => 'B2CRecipientIsRegisteredCustomer', 'Value' => 'Y'],
-            ['Key' => 'TransactionCompletedDateTime', 'Value' => '19.12.2019 10:45:50'],
-            ['Key' => 'ReceiverPartyPublicName', 'Value' => '254712345678 - John Doe'],
-            ['Key' => 'B2CWorkingAccountAvailableFunds', 'Value' => 900000.00]
-        ]
-    ]
-] ]
 ```
 
 ---
 
 ## 5. B2B (Business to Business)
 
+Transfer funds to another business Paybill or Till.
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::b2b([
-    'initiator_name' => env('MPESA_INITIATOR_NAME'),
-    'security_credential' => LaravelMpesa::generateSecurityCredential(),
-    'command_id' => 'BusinessPayBill',
-    'sender_identifier_type' => '4',
-    'receiver_identifier_type' => '4',
-    'amount' => 5000,
-    'party_a' => env('MPESA_B2B_SHORTCODE'),
-    'party_b' => '600123',
-    'remarks' => 'B2B Transfer',
-    'account_reference' => 'REF123',
-    'queue_timeout_url' => url('/mpesa/b2b/timeout'),
-    'result_url' => url('/mpesa/b2b/result')
-]);
-```
-
-### Expected Response
-
-```php
-[
-    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'OriginatorConversationID' => '16740-34861180-1',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
-```
-
-### Result URL Callback
-
-```php
-Route::post('/mpesa/b2b-result', function (Request $request) {
-    $result = $request->input('Result');
-    if ($result['ResultCode'] == 0) {
-        // Transfer successful
-    }
-    return response()->json(['ResultCode' => 0]);
-});
-```
-
-#### Payload
-
-```php
-[ 'Result' => [
-    'ResultCode' => 0,
-    'ResultDesc' => 'The service request is processed successfully.',
-    'TransactionID' => 'NLJ41HAY6Q',
-    'ResultParameters' => [
-        'ResultParameter' => [
-            ['Key' => 'Amount', 'Value' => 5000],
-            ['Key' => 'TransCompletedTime', 'Value' => '20191219104550'],
-            ['Key' => 'ReceiverPartyPublicName', 'Value' => '600000 - Test Business'],
-            ['Key' => 'DebitAccountCurrentBalance', 'Value' => '5000.00']
-        ]
-    ]
-] ]
+try {
+    $response = LaravelMpesa::b2b(
+        amount: 5000,
+        receiverShortcode: '600123',
+        commandId: 'BusinessPayBill', // or BusinessBuyGoods
+        remarks: 'Supplier Payment',
+        accountReference: 'INV-500'
+    );
+} catch (\Exception $e) {
+    Log::error("B2B Failed: " . $e->getMessage());
+}
 ```
 
 ---
 
 ## 6. Transaction Status
 
+Check the status of ANY transaction (C2B, B2C, etc.) using its ID.
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::transactionStatus(
-    transactionId: 'OEI2AK4Q16',
-    partyA: '600000',
-    remarks: 'Status query'
-);
-```
-
-### Expected Response
-
-```php
-[
-    'OriginatorConversationID' => '16740-34861180-1',
-    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
-```
-
-### Callback (Result URL)
-
-```php
-Route::post('/mpesa/transaction-status', function (Request $request) {
-    $result = $request->input('Result');
-    return response()->json(['ResultCode' => 0]);
-});
-```
-
-#### Payload
-
-```php
-[ 'Result' => [
-    'ResultCode' => 0,
-    'TransactionID' => 'NLJ41HAY6Q',
-    'ResultParameters' => [
-        'ResultParameter' => [
-            ['Key' => 'ReceiptNo', 'Value' => 'NLJ41HAY6Q'],
-            ['Key' => 'Amount', 'Value' => 100],
-            ['Key' => 'TransactionStatus', 'Value' => 'Completed'],
-            ['Key' => 'FinalisedTime', 'Value' => 20191219104550],
-            ['Key' => 'CreditPartyName', 'Value' => '254712345678 - John Doe']
-        ]
-    ]
-] ]
+try {
+    $response = LaravelMpesa::transactionStatus(
+        transactionId: 'OEI2AK4Q16', // The M-Pesa receipt number
+        partyA: '600000', // Your shortcode
+        remarks: 'Verify payment'
+    );
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
 
 ---
 
 ## 7. Account Balance
 
+Check your Paybill/Till balance.
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::accountBalance(
-    identifierType: '4',
-    remarks: 'Balance check'
-);
-```
-
-### Expected Response
-
-```php
-[
-    'OriginatorConversationID' => '16740-34861180-1',
-    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
-```
-
-### Callback (Result URL)
-
-```php
-Route::post('/mpesa/account-balance', function (Request $request) {
-    $result = $request->input('Result');
-    if ($result['ResultCode'] == 0) {
-        $balance = $result['ResultParameters']['ResultParameter'][0]['Value'];
-        // Parse balance string
-    }
-    return response()->json(['ResultCode' => 0]);
-});
-```
-
-#### Payload
-
-```php
-[ 'Result' => [
-    'ResultCode' => 0,
-    'ResultParameters' => [
-        'ResultParameter' => [
-            ['Key' => 'AccountBalance', 'Value' => 'Working Account|KES|50000.00|50000.00|0.00|0.00&Float Account|KES|0.00|...'],
-            ['Key' => 'BOCompletedTime', 'Value' => 20191219104550]
-        ]
-    ]
-] ]
+try {
+    $response = LaravelMpesa::accountBalance(
+        identifierType: '4', // 4 for Shortcode
+        remarks: 'End of day check'
+    );
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
 
 ---
 
 ## 8. Reversal
 
+Reverse a transaction (requires special permissions from Safaricom).
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::reversal([
-    'initiator_name' => env('MPESA_INITIATOR_NAME'),
-    'security_credential' => LaravelMpesa::generateSecurityCredential(),
-    'command_id' => 'TransactionReversal',
-    'transaction_id' => $originalTransactionId,
-    'amount' => $originalAmount,
-    'receiver_party' => env('MPESA_STK_SHORTCODE'),
-    'receiver_identifier_type' => '4',
-    'remarks' => 'Reversal',
-    'queue_timeout_url' => url('/mpesa/reversal/timeout'),
-    'result_url' => url('/mpesa/reversal/result')
-]);
-```
-
-### Expected Response
-
-```php
-[
-    'OriginatorConversationID' => '16740-34861180-1',
-    'ConversationID' => 'AG_20191219_00005797af5d7d75f652',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
-```
-
-### Result URL Callback
-
-```php
-Route::post('/mpesa/reversal-result', function (Request $request) {
-    $result = $request->input('Result');
-    if ($result['ResultCode'] == 0) {
-        // Reversal successful
-    }
-    return response()->json(['ResultCode' => 0]);
-});
-```
-
-#### Success Payload
-
-```php
-[ 'Result' => [
-    'ResultCode' => 0,
-    'ResultDesc' => 'The service request is processed successfully.',
-    'TransactionID' => 'NLJ41HAY6Q',
-    'ResultParameters' => [
-        'ResultParameter' => [
-            ['Key' => 'Amount', 'Value' => 100],
-            ['Key' => 'OriginalTransactionID', 'Value' => $originalTransactionId],
-            ['Key' => 'TransCompletedTime', 'Value' => 20191219104550],
-            ['Key' => 'CreditPartyPublicName', 'Value' => '254712345678 - John Doe']
-        ]
-    ]
-] ]
+try {
+    $response = LaravelMpesa::reversal(
+        transactionId: 'OEI2AK4Q16',
+        amount: 100,
+        receiverParty: '600000', // Your shortcode
+        remarks: 'Erroneous payment'
+    );
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
 
 ---
 
 ## 9. Dynamic QR Code
 
+Generate a QR code for customers to scan and pay.
+
 ### Usage
 
 ```php
-$qr = LaravelMpesa::dynamicQr([
-    'shortcode' => env('MPESA_STK_SHORTCODE'),
-    'amount' => 2500,
-    'reference' => 'QR-001',
-    'expiry_date' => now()->addHours(2)->toIso8601String()
-]);
-```
+try {
+    $qr = LaravelMpesa::dynamicQr(
+        amount: 2500,
+        refNo: 'ORDER-123',
+        trxCode: 'PB', // PB = Paybill, BG = Buy Goods
+        cpi: '600000', // Your shortcode
+        size: '300' // Size in pixels
+    );
 
-### Expected Response
+    $qrImage = $qr['QRCode']; // Base64 string
 
-```php
-[
-    'ResponseCode' => 'AG_20191219_000043fdf61864fe9ff5',
-    'RequestID' => '16738-27456357-1',
-    'ResponseDescription' => 'The service request is processed successfully.',
-    'QRCode' => 'iVBORw0KGgoAAAANSUhEUgAAAPoAAAD6AQ...'
-]
-```
-
-### Callback
-
-No callback – synchronous response with QR code.
-
-#### Display QR Code
-
-```php
-$qrData = $qr['QRCode'];
-echo "<img src='data:image/png;base64,$qrData' />";
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
 
 ---
 
 ## 10. Pull Transaction
 
+Register to "pull" missed transactions.
+
 ### Usage
 
 ```php
-$response = LaravelMpesa::pullTransactionRegister([
-    'shortcode' => '600000',
-    'requestType' => 'Pull',
-    'nominatedNumber' => '254712345678'
-]);
+try {
+    $response = LaravelMpesa::pullTransactionRegister(
+        shortcode: '600000',
+        requestType: 'Pull',
+        nominatedNumber: '254712345678'
+    );
+} catch (\Exception $e) {
+    // Handle error
+}
 ```
-
-### Expected Response
-
-```php
-[
-    'OriginatorConversationID' => '16740-34861180-1',
-    'ResponseCode' => '0',
-    'ResponseDescription' => 'Accept the service request successfully.'
-]
-```
-
-### Callback
-
-No callback for registration. Use the pull endpoint to retrieve transactions.
 
 ---
 
-_Generated on_ `{{date}}` _by_ **Antigravity**.
+## 11. Multi-Tenant Usage
+
+For SaaS applications where you manage multiple merchants.
+
+### Database Setup
+
+Ensure you have run the migrations:
+
+```bash
+php artisan migrate
+```
+
+### Creating an Account
+
+```php
+use App\Models\MpesaAccount;
+
+$account = MpesaAccount::create([
+    'name' => 'Merchant A',
+    'credentials' => [
+        'consumer_key' => '...',
+        'consumer_secret' => '...',
+        'stk' => [
+            'shortcode' => '123456',
+            'passkey' => '...',
+            'callback_url' => 'https://app.com/callback/123456'
+        ]
+    ]
+]);
+```
+
+### Using an Account
+
+```php
+// Option 1: Pass the model instance
+LaravelMpesa::withAccount($account)
+    ->stkPush(100, '254712345678');
+
+// Option 2: Pass the tenant ID (if using custom logic)
+LaravelMpesa::forAccount('merchant-123')
+    ->stkPush(100, '254712345678');
+```
+
+---
+
+_Documentation updated for **Laravel M-Pesa v0.2.0**_
