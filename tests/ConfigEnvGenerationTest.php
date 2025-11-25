@@ -4,7 +4,7 @@ use Joemuigai\LaravelMpesa\Commands\LaravelMpesaCommand;
 use ReflectionClass;
 
 it('generates config with env function calls', function () {
-    $command = new LaravelMpesaCommand();
+    $command = new LaravelMpesaCommand;
 
     $reflection = new ReflectionClass($command);
     $method = $reflection->getMethod('varExport');
