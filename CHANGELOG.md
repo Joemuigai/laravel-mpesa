@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-mpesa` will be documented in this file.
 
+## 0.2.3 - 2025-11-25
+
+### What's Changed
+
+* feat: Replace direct `env()` calls with `MpesaEnv` objects in config … by @Joemuigai in https://github.com/Joemuigai/laravel-mpesa/pull/6
+
+**Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/0.2.2...0.2.3
+
 ## 0.2.2 - 2025-11-24
 
 ### What's Changed
