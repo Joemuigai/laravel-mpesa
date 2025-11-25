@@ -421,4 +421,62 @@ return [
         'enabled' => env('MPESA_LOG_ENABLED', true),
         'channel' => env('MPESA_LOG_CHANNEL'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Callback Settings
+    |--------------------------------------------------------------------------
+    |
+    | Configure how M-Pesa callbacks/webhooks are handled by the package.
+    |
+    */
+
+    'callbacks' => [
+        'security' => [
+            // Verify that callbacks come from Safaricom's gateway IPs
+            'verify_ip' => env('MPESA_VERIFY_CALLBACK_IP', true),
+
+            // Official Safaricom gateway IP addresses
+            'allowed_ips' => [
+                '196.201.214.200',
+                '196.201.214.206',
+                '196.201.213.114',
+                '196.201.214.207',
+                '196.201.214.208',
+                '196.201.213.44',
+                '196.201.212.127',
+                '196.201.212.138',
+                '196.201.212.129',
+                '196.201.212.136',
+                '196.201.212.74',
+                '196.201.212.69',
+            ],
+
+            // Optional signature verification (M-Pesa doesn't currently provide this)
+            'verify_signature' => env('MPESA_VERIFY_CALLBACK_SIGNATURE', false),
+            'webhook_secret' => env('MPESA_WEBHOOK_SECRET'),
+        ],
+
+        'logging' => [
+            // Enable callback logging
+            'enabled' => env('MPESA_LOG_CALLBACKS', true),
+
+            // Log channel for callbacks
+            'channel' => env('MPESA_CALLBACK_LOG_CHANNEL', 'stack'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Transaction Logging
+    |--------------------------------------------------------------------------
+    |
+    | Configure database logging for all API transactions.
+    |
+    */
+
+    'logging' => [
+        'enabled' => env('MPESA_LOG_DB', true),
+        'table_name' => 'mpesa_transactions',
+    ],
 ];

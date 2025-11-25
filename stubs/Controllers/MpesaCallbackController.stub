@@ -1,0 +1,178 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Joemuigai\LaravelMpesa\Models\MpesaCallback;
+use Joemuigai\LaravelMpesa\Services\CallbackParser;
+
+class MpesaCallbackController extends Controller
+{
+    public function __construct(
+        protected CallbackParser $parser
+    ) {}
+
+    /**
+     * Handle STK Push callback.
+     */
+    public function stkPush(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'stk_push');
+    }
+
+    /**
+     * Handle C2B confirmation callback.
+     */
+    public function c2bConfirmation(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'c2b_confirmation');
+    }
+
+    /**
+     * Handle C2B validation callback.
+     */
+    public function c2bValidation(Request $request): JsonResponse
+    {
+        // For validation, we return success if the callback is valid
+        $result = $this->handleCallback($request, 'c2b_validation');
+
+        // Return a proper validation response
+        return response()->json([
+            'ResultCode' => 0,
+            'ResultDesc' => 'Accepted',
+        ]);
+    }
+
+    /**
+     * Handle B2C result callback.
+     */
+    public function b2cResult(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'b2c_result');
+    }
+
+    /**
+     * Handle B2C timeout callback.
+     */
+    public function b2cTimeout(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'b2c_timeout');
+    }
+
+    /**
+     * Handle B2B result callback.
+     */
+    public function b2bResult(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'b2b_result');
+    }
+
+    /**
+     * Handle B2B timeout callback.
+     */
+    public function b2bTimeout(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'b2b_timeout');
+    }
+
+    /**
+     * Handle Transaction Status result callback.
+     */
+    public function transactionStatusResult(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'transaction_status_result');
+    }
+
+    /**
+     * Handle Transaction Status timeout callback.
+     */
+    public function transactionStatusTimeout(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'transaction_status_timeout');
+    }
+
+    /**
+     * Handle Account Balance result callback.
+     */
+    public function accountBalanceResult(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'account_balance_result');
+    }
+
+    /**
+     * Handle Account Balance timeout callback.
+     */
+    public function accountBalanceTimeout(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'account_balance_timeout');
+    }
+
+    /**
+     * Handle Reversal result callback.
+     */
+    public function reversalResult(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'reversal_result');
+    }
+
+    /**
+     * Handle Reversal timeout callback.
+     */
+    public function reversalTimeout(Request $request): JsonResponse
+    {
+        return $this->handleCallback($request, 'reversal_timeout');
+    }
+
+    /**
+     * Generic callback handler.
+     */
+    protected function handleCallback(Request $request, string $callbackType): JsonResponse
+    {
+        $payload = $request->all();
+
+        try {
+            // Parse the callback
+            $normalized = $this->parser->parse($callbackType, $payload);
+
+            // Store the callback
+            $callback = MpesaCallback::create([
+                'callback_type' => $callbackType,
+                'merchant_request_id' => $normalized['merchant_request_id'] ?? null,
+                'checkout_request_id' => $normalized['checkout_request_id'] ?? null,
+                'conversation_id' => $normalized['conversation_id'] ?? null,
+                'originator_conversation_id' => $normalized['originator_conversation_id'] ?? null,
+                'payload' => $payload,
+                'ip_address' => $request->ip(),
+            ]);
+
+            // Log the callback if enabled
+            if (config('mpesa.callbacks.logging.enabled', true)) {
+                Log::channel(config('mpesa.callbacks.logging.channel', 'stack'))
+                    ->info("M-Pesa {$callbackType} callback received", [
+                        'callback_id' => $callback->id,
+                        'normalized' => $normalized,
+                    ]);
+            }
+
+            // Return success response
+            return response()->json([
+                'ResultCode' => 0,
+                'ResultDesc' => 'Success',
+            ]);
+        } catch (\Exception $e) {
+            // Log the error
+            Log::error("Failed to process M-Pesa {$callbackType} callback", [
+                'error' => $e->getMessage(),
+                'payload' => $payload,
+            ]);
+
+            // Return error response
+            return response()->json([
+                'ResultCode' => 1,
+                'ResultDesc' => 'Failed to process callback',
+            ], 500);
+        }
+    }
+}

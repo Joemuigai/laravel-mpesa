@@ -408,3 +408,13 @@ it('can chain transaction type with other overrides', function () {
             && $body['BusinessShortCode'] === '600001';
     });
 });
+
+it('can set idempotency key', function () {
+    $mpesa = new \Joemuigai\LaravelMpesa\LaravelMpesa;
+    $instance = $mpesa->withIdempotencyKey('unique_key_123');
+
+    $reflection = new ReflectionClass($instance);
+    $property = $reflection->getProperty('overrides');
+
+    expect($property->getValue($instance))->toHaveKey('idempotency_key', 'unique_key_123');
+});

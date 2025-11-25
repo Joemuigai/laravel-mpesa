@@ -4,7 +4,7 @@ use Joemuigai\LaravelMpesa\Commands\LaravelMpesaCommand;
 use ReflectionClass;
 
 it('generates comprehensive env variables for STK push', function () {
-    $command = new LaravelMpesaCommand();
+    $command = new LaravelMpesaCommand;
 
     // Set selected APIs using reflection
     $reflection = new ReflectionClass($command);
@@ -43,7 +43,7 @@ it('generates comprehensive env variables for STK push', function () {
 });
 
 it('generates comprehensive env variables for all APIs', function () {
-    $command = new LaravelMpesaCommand();
+    $command = new LaravelMpesaCommand;
 
     $reflection = new ReflectionClass($command);
 
@@ -56,7 +56,7 @@ it('generates comprehensive env variables for all APIs', function () {
         'transaction_status',
         'account_balance',
         'reversal',
-        'pull_transaction'
+        'pull_transaction',
     ]);
 
     $scenarioProperty = $reflection->getProperty('scenario');

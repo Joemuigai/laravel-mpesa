@@ -55,7 +55,10 @@ class LaravelMpesaCommand extends Command
             $this->publishExampleModel();
         }
 
-        // Step 6: Handle environment variables
+        // Step 6: Setup Callbacks (Optional)
+        $this->setupCallbacks();
+
+        // Step 7: Handle environment variables
         $this->handleEnvironmentVariables();
 
         // Step 7: Show next steps
@@ -124,6 +127,48 @@ class LaravelMpesaCommand extends Command
                 hint: 'For multi-tenant, you can support different account types'
             );
         }
+    }
+
+    protected function setupCallbacks(): void
+    {
+        $setupCallbacks = confirm(
+            label: 'Do you want to set up M-Pesa callback handling?',
+            default: true,
+            hint: 'This will publish a controller and routes for handling webhooks'
+        );
+
+        if (! $setupCallbacks) {
+            return;
+        }
+
+        spin(
+            callback: function () {
+                // Publish Controller
+                $this->callSilent('vendor:publish', [
+                    '--tag' => 'laravel-mpesa-controller',
+                ]);
+
+                // Publish Routes
+                $this->callSilent('vendor:publish', [
+                    '--tag' => 'laravel-mpesa-routes',
+                ]);
+
+                // Publish Migration
+                $this->callSilent('vendor:publish', [
+                    '--tag' => 'laravel-mpesa-migrations',
+                ]);
+            },
+            message: 'Publishing callback files...'
+        );
+
+        $this->components->info('Callback files published successfully!');
+        $this->components->bulletList([
+            'Controller: app/Http/Controllers/MpesaCallbackController.php',
+            'Routes: routes/mpesa.php',
+            'Migration: database/migrations/create_mpesa_callbacks_table.php',
+        ]);
+
+        $this->components->warn('IMPORTANT: Register the routes in bootstrap/app.php as API routes!');
     }
 
     protected function publishConfig(): void

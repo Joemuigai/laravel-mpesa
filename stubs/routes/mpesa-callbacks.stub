@@ -1,0 +1,40 @@
+<?php
+
+use App\Http\Controllers\MpesaCallbackController;
+use Illuminate\Support\Facades\Route;
+
+/**
+ * Payment Gateway Callback Routes
+ * 
+ * IMPORTANT: Safaricom recommends NOT using keywords like "mpesa", "safaricom"
+ * in your callback URLs. Use neutral terms like "payments", "webhooks", etc.
+ */
+
+Route::middleware(['mpesa.verify'])->group(function () {
+    // STK Push
+    Route::post('/stk-push', [MpesaCallbackController::class, 'stkPush'])->name('payments.callbacks.stkPush');
+
+    // C2B
+    Route::post('/c2b/confirmation', [MpesaCallbackController::class, 'c2bConfirmation'])->name('payments.callbacks.c2bConfirmation');
+    Route::post('/c2b/validation', [MpesaCallbackController::class, 'c2bValidation'])->name('payments.callbacks.c2bValidation');
+
+    // B2C
+    Route::post('/b2c/result', [MpesaCallbackController::class, 'b2cResult'])->name('payments.callbacks.b2cResult');
+    Route::post('/b2c/timeout', [MpesaCallbackController::class, 'b2cTimeout'])->name('payments.callbacks.b2cTimeout');
+
+    // B2B
+    Route::post('/b2b/result', [MpesaCallbackController::class, 'b2bResult'])->name('payments.callbacks.b2bResult');
+    Route::post('/b2b/timeout', [MpesaCallbackController::class, 'b2bTimeout'])->name('payments.callbacks.b2bTimeout');
+
+    // Transaction Status
+    Route::post('/transaction-status/result', [MpesaCallbackController::class, 'transactionStatusResult'])->name('payments.callbacks.transactionStatusResult');
+    Route::post('/transaction-status/timeout', [MpesaCallbackController::class, 'transactionStatusTimeout'])->name('payments.callbacks.transactionStatusTimeout');
+
+    // Account Balance
+    Route::post('/account-balance/result', [MpesaCallbackController::class, 'accountBalanceResult'])->name('payments.callbacks.accountBalanceResult');
+    Route::post('/account-balance/timeout', [MpesaCallbackController::class, 'accountBalanceTimeout'])->name('payments.callbacks.accountBalanceTimeout');
+
+    // Reversal
+    Route::post('/reversal/result', [MpesaCallbackController::class, 'reversalResult'])->name('payments.callbacks.reversalResult');
+    Route::post('/reversal/timeout', [MpesaCallbackController::class, 'reversalTimeout'])->name('payments.callbacks.reversalTimeout');
+});
