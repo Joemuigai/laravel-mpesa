@@ -181,11 +181,11 @@ class LaravelMpesaCommand extends Command
 
         // Core credentials (always needed)
         $config['credentials'] = [
-            'consumer_key' => env('MPESA_CONSUMER_KEY'),
-            'consumer_secret' => env('MPESA_CONSUMER_SECRET'),
+            'consumer_key' => new MpesaEnv('MPESA_CONSUMER_KEY'),
+            'consumer_secret' => new MpesaEnv('MPESA_CONSUMER_SECRET'),
         ];
 
-        $config['environment'] = env('MPESA_ENVIRONMENT', 'sandbox');
+        $config['environment'] = new MpesaEnv('MPESA_ENVIRONMENT', 'sandbox');
 
         $config['base_urls'] = [
             'sandbox' => 'https://sandbox.safaricom.co.ke',
@@ -230,10 +230,10 @@ class LaravelMpesaCommand extends Command
 
         // HTTP config (always needed)
         $config['http'] = [
-            'timeout' => env('MPESA_HTTP_TIMEOUT', 30),
-            'connect_timeout' => env('MPESA_HTTP_CONNECT_TIMEOUT', 10),
-            'retries' => env('MPESA_HTTP_RETRIES', 3),
-            'verify' => env('MPESA_HTTP_VERIFY', true),
+            'timeout' => new MpesaEnv('MPESA_HTTP_TIMEOUT', 30),
+            'connect_timeout' => new MpesaEnv('MPESA_HTTP_CONNECT_TIMEOUT', 10),
+            'retries' => new MpesaEnv('MPESA_HTTP_RETRIES', 3),
+            'verify' => new MpesaEnv('MPESA_HTTP_VERIFY', true),
         ];
 
         return $config;
@@ -242,18 +242,18 @@ class LaravelMpesaCommand extends Command
     protected function getStkConfig(): array
     {
         $config = [
-            'shortcode' => env('MPESA_STK_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE', '174379')),
-            'passkey' => env('MPESA_STK_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'),
-            'callback_url' => env('MPESA_STK_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
+            'shortcode' => new MpesaEnv('MPESA_STK_SHORTCODE', new MpesaEnv('MPESA_BUSINESS_SHORTCODE', '174379')),
+            'passkey' => new MpesaEnv('MPESA_STK_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'),
+            'callback_url' => new MpesaEnv('MPESA_STK_CALLBACK_URL', new MpesaEnv('MPESA_CALLBACK_URL')),
         ];
 
         // Set default_type based on user selection
         if ($this->transactionTypePreference === 'till') {
-            $config['default_type'] = env('MPESA_STK_DEFAULT_TYPE', 'buy_goods');
+            $config['default_type'] = new MpesaEnv('MPESA_STK_DEFAULT_TYPE', 'buy_goods');
         } elseif ($this->transactionTypePreference === 'both') {
-            $config['default_type'] = env('MPESA_STK_DEFAULT_TYPE', 'paybill'); // Default to paybill when both
+            $config['default_type'] = new MpesaEnv('MPESA_STK_DEFAULT_TYPE', 'paybill'); // Default to paybill when both
         } else {
-            $config['default_type'] = env('MPESA_STK_DEFAULT_TYPE', 'paybill');
+            $config['default_type'] = new MpesaEnv('MPESA_STK_DEFAULT_TYPE', 'paybill');
         }
 
         // Only include transaction_types if user selected 'both' or if they might need it
@@ -273,8 +273,8 @@ class LaravelMpesaCommand extends Command
         }
 
         $config['defaults'] = [
-            'account_reference' => env('MPESA_STK_DEFAULT_ACCOUNT_REF', 'Payment'),
-            'transaction_desc' => env('MPESA_STK_DEFAULT_DESC', 'Payment'),
+            'account_reference' => new MpesaEnv('MPESA_STK_DEFAULT_ACCOUNT_REF', 'Payment'),
+            'transaction_desc' => new MpesaEnv('MPESA_STK_DEFAULT_DESC', 'Payment'),
         ];
 
         return $config;
@@ -283,31 +283,31 @@ class LaravelMpesaCommand extends Command
     protected function getC2bConfig(): array
     {
         return [
-            'shortcode' => env('MPESA_C2B_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE')),
-            'validation_url' => env('MPESA_C2B_VALIDATION_URL'),
-            'confirmation_url' => env('MPESA_C2B_CONFIRMATION_URL'),
-            'response_type' => env('MPESA_C2B_RESPONSE_TYPE', 'Completed'),
+            'shortcode' => new MpesaEnv('MPESA_C2B_SHORTCODE', new MpesaEnv('MPESA_BUSINESS_SHORTCODE')),
+            'validation_url' => new MpesaEnv('MPESA_C2B_VALIDATION_URL'),
+            'confirmation_url' => new MpesaEnv('MPESA_C2B_CONFIRMATION_URL'),
+            'response_type' => new MpesaEnv('MPESA_C2B_RESPONSE_TYPE', 'Completed'),
         ];
     }
 
     protected function getInitiatorConfig(): array
     {
         return [
-            'name' => env('MPESA_INITIATOR_NAME', 'testapi'),
-            'password' => env('MPESA_INITIATOR_PASSWORD'),
+            'name' => new MpesaEnv('MPESA_INITIATOR_NAME', 'testapi'),
+            'password' => new MpesaEnv('MPESA_INITIATOR_PASSWORD'),
         ];
     }
 
     protected function getB2cConfig(): array
     {
         return [
-            'shortcode' => env('MPESA_B2C_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE')),
-            'command_id' => env('MPESA_B2C_COMMAND_ID', 'BusinessPayment'),
-            'result_url' => env('MPESA_B2C_RESULT_URL'),
-            'timeout_url' => env('MPESA_B2C_TIMEOUT_URL'),
+            'shortcode' => new MpesaEnv('MPESA_B2C_SHORTCODE', new MpesaEnv('MPESA_BUSINESS_SHORTCODE')),
+            'command_id' => new MpesaEnv('MPESA_B2C_COMMAND_ID', 'BusinessPayment'),
+            'result_url' => new MpesaEnv('MPESA_B2C_RESULT_URL'),
+            'timeout_url' => new MpesaEnv('MPESA_B2C_TIMEOUT_URL'),
             'defaults' => [
-                'remarks' => env('MPESA_B2C_DEFAULT_REMARKS', 'B2C Payment'),
-                'occasion' => env('MPESA_B2C_DEFAULT_OCCASION'),
+                'remarks' => new MpesaEnv('MPESA_B2C_DEFAULT_REMARKS', 'B2C Payment'),
+                'occasion' => new MpesaEnv('MPESA_B2C_DEFAULT_OCCASION'),
             ],
         ];
     }
@@ -315,9 +315,9 @@ class LaravelMpesaCommand extends Command
     protected function getTransactionStatusConfig(): array
     {
         return [
-            'party_a' => env('MPESA_TXN_STATUS_PARTY_A', env('MPESA_BUSINESS_SHORTCODE')),
-            'result_url' => env('MPESA_STATUS_RESULT_URL'),
-            'timeout_url' => env('MPESA_STATUS_TIMEOUT_URL'),
+            'party_a' => new MpesaEnv('MPESA_TXN_STATUS_PARTY_A', new MpesaEnv('MPESA_BUSINESS_SHORTCODE')),
+            'result_url' => new MpesaEnv('MPESA_STATUS_RESULT_URL'),
+            'timeout_url' => new MpesaEnv('MPESA_STATUS_TIMEOUT_URL'),
             'defaults' => [
                 'remarks' => 'Transaction Status Query',
                 'occasion' => null,
@@ -328,11 +328,11 @@ class LaravelMpesaCommand extends Command
     protected function getPullConfig(): array
     {
         return [
-            'shortcode' => env('MPESA_PULL_SHORTCODE', env('MPESA_BUSINESS_SHORTCODE')),
+            'shortcode' => new MpesaEnv('MPESA_PULL_SHORTCODE', new MpesaEnv('MPESA_BUSINESS_SHORTCODE')),
             'register' => [
-                'request_type' => env('MPESA_PULL_REQUEST_TYPE', 'Pull'),
-                'nominated_number' => env('MPESA_PULL_NOMINATED_MSISDN'),
-                'callback_url' => env('MPESA_PULL_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
+                'request_type' => new MpesaEnv('MPESA_PULL_REQUEST_TYPE', 'Pull'),
+                'nominated_number' => new MpesaEnv('MPESA_PULL_NOMINATED_MSISDN'),
+                'callback_url' => new MpesaEnv('MPESA_PULL_CALLBACK_URL', new MpesaEnv('MPESA_CALLBACK_URL')),
             ],
         ];
     }
@@ -340,41 +340,41 @@ class LaravelMpesaCommand extends Command
     protected function getCallbacksConfig(array $apis): array
     {
         $callbacks = [
-            'default' => env('MPESA_CALLBACK_URL'),
+            'default' => new MpesaEnv('MPESA_CALLBACK_URL'),
         ];
 
         if (in_array('b2c', $apis)) {
             $callbacks['b2c'] = [
-                'result' => env('MPESA_B2C_RESULT_URL'),
-                'timeout' => env('MPESA_B2C_TIMEOUT_URL'),
+                'result' => new MpesaEnv('MPESA_B2C_RESULT_URL'),
+                'timeout' => new MpesaEnv('MPESA_B2C_TIMEOUT_URL'),
             ];
         }
 
         if (in_array('b2b', $apis)) {
             $callbacks['b2b'] = [
-                'result' => env('MPESA_B2B_RESULT_URL'),
-                'timeout' => env('MPESA_B2B_TIMEOUT_URL'),
+                'result' => new MpesaEnv('MPESA_B2B_RESULT_URL'),
+                'timeout' => new MpesaEnv('MPESA_B2B_TIMEOUT_URL'),
             ];
         }
 
         if (in_array('transaction_status', $apis)) {
             $callbacks['status'] = [
-                'result' => env('MPESA_STATUS_RESULT_URL'),
-                'timeout' => env('MPESA_STATUS_TIMEOUT_URL'),
+                'result' => new MpesaEnv('MPESA_STATUS_RESULT_URL'),
+                'timeout' => new MpesaEnv('MPESA_STATUS_TIMEOUT_URL'),
             ];
         }
 
         if (in_array('account_balance', $apis)) {
             $callbacks['balance'] = [
-                'result' => env('MPESA_BALANCE_RESULT_URL'),
-                'timeout' => env('MPESA_BALANCE_TIMEOUT_URL'),
+                'result' => new MpesaEnv('MPESA_BALANCE_RESULT_URL'),
+                'timeout' => new MpesaEnv('MPESA_BALANCE_TIMEOUT_URL'),
             ];
         }
 
         if (in_array('reversal', $apis)) {
             $callbacks['reversal'] = [
-                'result' => env('MPESA_REVERSAL_RESULT_URL'),
-                'timeout' => env('MPESA_REVERSAL_TIMEOUT_URL'),
+                'result' => new MpesaEnv('MPESA_REVERSAL_RESULT_URL'),
+                'timeout' => new MpesaEnv('MPESA_REVERSAL_TIMEOUT_URL'),
             ];
         }
 
@@ -388,7 +388,7 @@ class LaravelMpesaCommand extends Command
                 'sandbox' => __DIR__.'/../../Certificates/SandboxCertificate.cer',
                 'production' => __DIR__.'/../../Certificates/ProductionCertificate.cer',
             ],
-            'cache_ttl' => env('MPESA_SECURITY_CREDENTIAL_CACHE_TTL', 3600),
+            'cache_ttl' => new MpesaEnv('MPESA_SECURITY_CREDENTIAL_CACHE_TTL', 3600),
         ];
     }
 
@@ -616,6 +616,18 @@ class LaravelMpesaCommand extends Command
 
     protected function varExport($value, $indent = ''): string
     {
+        if ($value instanceof MpesaEnv) {
+            $default = $value->default;
+            if ($default instanceof MpesaEnv) {
+                // Handle nested env calls: env('KEY', env('FALLBACK'))
+                $defaultExport = $this->varExport($default, $indent);
+            } else {
+                $defaultExport = var_export($default, true);
+            }
+
+            return "env('{$value->key}', {$defaultExport})";
+        }
+
         if (is_array($value)) {
             $r = "[\n";
             $indent .= '    ';
@@ -635,4 +647,12 @@ class LaravelMpesaCommand extends Command
 
         return var_export($value, true);
     }
+}
+
+class MpesaEnv
+{
+    public function __construct(
+        public string $key,
+        public mixed $default = null
+    ) {}
 }
