@@ -2,12 +2,95 @@
 
 namespace App\Services\Mpesa;
 
-use Joemuigai\LaravelMpesa\Facades\LaravelMpesa;
+use Joemuigai\LaravelMpesa\LaravelMpesa;
 
 class MpesaService
 {
+    protected LaravelMpesa $mpesa;
+
+    public function __construct(LaravelMpesa $mpesa)
+    {
+        $this->mpesa = $mpesa;
+    }
+
+    /**
+     * Override shortcode for this request.
+     */
+    public function withShortcode(string $shortcode): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withShortcode($shortcode);
+        return $clone;
+    }
+
+    /**
+     * Override passkey for this request (STK Push).
+     */
+    public function withPasskey(string $passkey): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withPasskey($passkey);
+        return $clone;
+    }
+
+    /**
+     * Override callback URL for this request.
+     */
+    public function withCallbackUrl(string $callbackUrl): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withCallbackUrl($callbackUrl);
+        return $clone;
+    }
+
+    /**
+     * Override transaction type for this request.
+     */
+    public function withTransactionType(string $transactionType): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withTransactionType($transactionType);
+        return $clone;
+    }
+
+    /**
+     * Use Buy Goods (Till Number) for this request.
+     */
+    public function withBuyGoods(): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withBuyGoods();
+        return $clone;
+    }
+
+    /**
+     * Use Paybill for this request.
+     */
+    public function withPaybill(): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withPaybill();
+        return $clone;
+    }
+
+    /**
+     * Set idempotency key for this request.
+     */
+    public function withIdempotencyKey(string $key): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withIdempotencyKey($key);
+        return $clone;
+    }
+
     /**
      * Initiate an STK Push (Lipa Na M-Pesa Online) request.
+     *
+     * Use this when you want to prompt the customer to enter their PIN on their phone
+     * to authorize a payment to your Paybill or Till Number.
+     *
+     * Tip: For multi-tenant apps, you can override the shortcode and passkey:
+     * $service->withShortcode('123456')->withPasskey('your_passkey')->stkPush(...);
      *
      * @param int|float $amount The amount to transact.
      * @param string $phoneNumber The customer's phone number.
@@ -17,32 +100,41 @@ class MpesaService
      */
     public function stkPush($amount, string $phoneNumber, ?string $reference = null, ?string $description = null): array
     {
-        return LaravelMpesa::stkPush($amount, $phoneNumber, $reference, $description);
+        return $this->mpesa->stkPush($amount, $phoneNumber, $reference, $description);
     }
 
     /**
      * Query the status of an STK Push transaction.
+     *
+     * Use this to check the status of an STK Push transaction if you haven't received
+     * a callback notification within a reasonable time.
      *
      * @param string $checkoutRequestId The CheckoutRequestID from the initial STK Push response.
      * @return array The API response.
      */
     public function stkPushQuery(string $checkoutRequestId): array
     {
-        return LaravelMpesa::stkPushQuery($checkoutRequestId);
+        return $this->mpesa->stkPushQuery($checkoutRequestId);
     }
 
     /**
      * Register validation and confirmation URLs for C2B transactions.
      *
+     * Use this ONCE (or when URLs change) to tell Safaricom where to send callbacks
+     * when a customer pays your Paybill/Till number via their SIM toolkit or App.
+     *
      * @return array The API response.
      */
     public function c2bRegisterUrl(): array
     {
-        return LaravelMpesa::c2bRegisterUrl();
+        return $this->mpesa->c2bRegisterUrl();
     }
 
     /**
      * Simulate a C2B transaction (Sandbox only).
+     *
+     * Use this in the SANDBOX environment to simulate a customer paying your Paybill/Till.
+     * This triggers the Validation and Confirmation callbacks to your registered URLs.
      *
      * @param int|float $amount The amount to transact.
      * @param string $phoneNumber The customer's phone number.
@@ -52,11 +144,14 @@ class MpesaService
      */
     public function c2bSimulate($amount, string $phoneNumber, ?string $commandId = null, ?string $accountNumber = null): array
     {
-        return LaravelMpesa::c2bSimulate($amount, $phoneNumber, $commandId, $accountNumber);
+        return $this->mpesa->c2bSimulate($amount, $phoneNumber, $commandId, $accountNumber);
     }
 
     /**
      * Initiate a Business to Customer (B2C) payment.
+     *
+     * Use this to send money from your business account to a customer's phone number.
+     * Ideal for refunds, salary payments, winnings, or disbursements.
      *
      * @param int|float $amount The amount to transact.
      * @param string $phoneNumber The customer's phone number.
@@ -67,11 +162,14 @@ class MpesaService
      */
     public function b2c($amount, string $phoneNumber, ?string $commandId = null, ?string $remarks = null, ?string $occasion = null): array
     {
-        return LaravelMpesa::b2c($amount, $phoneNumber, $commandId, $remarks, $occasion);
+        return $this->mpesa->b2c($amount, $phoneNumber, $commandId, $remarks, $occasion);
     }
 
     /**
      * Initiate a Business to Business (B2B) payment.
+     *
+     * Use this to transfer funds from your business Paybill/Till to another business's
+     * Paybill or Till number.
      *
      * @param int|float $amount The amount to transact.
      * @param string $receiverShortcode The receiver's shortcode.
@@ -82,11 +180,14 @@ class MpesaService
      */
     public function b2b($amount, string $receiverShortcode, ?string $commandId = null, ?string $remarks = null, ?string $accountReference = null): array
     {
-        return LaravelMpesa::b2b($amount, $receiverShortcode, $commandId, $remarks, $accountReference);
+        return $this->mpesa->b2b($amount, $receiverShortcode, $commandId, $remarks, $accountReference);
     }
 
     /**
      * Check the status of a transaction.
+     *
+     * Use this to query the final status (Success/Failed) of any M-Pesa transaction
+     * using its unique M-Pesa Transaction ID (e.g., OEI234...).
      *
      * @param string $transactionId The M-Pesa Transaction ID.
      * @param string|null $originalConversationId The original conversation ID.
@@ -97,11 +198,14 @@ class MpesaService
      */
     public function transactionStatus(string $transactionId, ?string $originalConversationId = null, string $identifierType = '4', ?string $remarks = null, ?string $occasion = null): array
     {
-        return LaravelMpesa::transactionStatus($transactionId, $originalConversationId, $identifierType, $remarks, $occasion);
+        return $this->mpesa->transactionStatus($transactionId, $originalConversationId, $identifierType, $remarks, $occasion);
     }
 
     /**
      * Check the account balance.
+     *
+     * Use this to check the current Working, Utility, and Float balances of your
+     * Paybill or Till number.
      *
      * @param string $identifierType Identifier type (4=Shortcode).
      * @param string|null $remarks Remarks.
@@ -109,11 +213,14 @@ class MpesaService
      */
     public function accountBalance(string $identifierType = '4', ?string $remarks = null): array
     {
-        return LaravelMpesa::accountBalance($identifierType, $remarks);
+        return $this->mpesa->accountBalance($identifierType, $remarks);
     }
 
     /**
      * Reverse a transaction.
+     *
+     * Use this to reverse a successful transaction (e.g., accidental payment, wrong amount).
+     * Note: Not all transactions are reversible.
      *
      * @param string $transactionId The M-Pesa Transaction ID to reverse.
      * @param int|float $amount The amount to reverse.
@@ -125,11 +232,14 @@ class MpesaService
      */
     public function reversal(string $transactionId, $amount, string $receiverParty, string $receiverIdentifierType = '11', ?string $remarks = null, ?string $occasion = null): array
     {
-        return LaravelMpesa::reversal($transactionId, $amount, $receiverParty, $receiverIdentifierType, $remarks, $occasion);
+        return $this->mpesa->reversal($transactionId, $amount, $receiverParty, $receiverIdentifierType, $remarks, $occasion);
     }
 
     /**
      * Generate a Dynamic QR Code.
+     *
+     * Use this to generate a QR code that customers can scan with their M-Pesa app
+     * to automatically fill in payment details.
      *
      * @param int|float $amount The amount.
      * @param string $refNo Reference number.
@@ -140,16 +250,19 @@ class MpesaService
      */
     public function dynamicQr($amount, string $refNo, string $trxCode, string $cpi, int $size = 300): array
     {
-        return LaravelMpesa::dynamicQr($amount, $refNo, $trxCode, $cpi, $size);
+        return $this->mpesa->dynamicQr($amount, $refNo, $trxCode, $cpi, $size);
     }
 
     /**
      * Register URLs for Pull Transactions.
      *
+     * Use this to register callbacks for "Pull" transactions (like missed callbacks).
+     *
      * @return array The API response.
      */
     public function pullTransactionRegister(): array
     {
-        return LaravelMpesa::pullTransactionRegister();
+        return $this->mpesa->pullTransactionRegister();
     }
 }
+
