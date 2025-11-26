@@ -631,12 +631,12 @@ class LaravelMpesaCommand extends Command
 
         // Pattern to find ->withMiddleware(function (Middleware $middleware) {
         $pattern = '/->withMiddleware\s*\(\s*function\s*\(\s*Middleware\s+\$middleware\s*\)\s*\{/';
-        
+
         if (preg_match($pattern, $content)) {
             $replacement = "->withMiddleware(function (Middleware \$middleware) {\n        \$middleware->alias([\n            'mpesa.verify' => \Joemuigai\LaravelMpesa\Http\Middleware\VerifyMpesaCallback::class,\n        ]);";
-            
+
             $newContent = preg_replace($pattern, $replacement, $content);
-            
+
             if ($newContent !== null && $newContent !== $content) {
                 file_put_contents($bootstrapApp, $newContent);
                 $this->components->info('✓ Middleware registered in bootstrap/app.php');
