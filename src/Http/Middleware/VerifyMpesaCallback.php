@@ -40,7 +40,7 @@ class VerifyMpesaCallback
         }
 
         $clientIp = $request->ip();
-        $allowedIps = config('mpesa.callbacks.security.allowed_ips', $this->safaricomIps);
+        $allowedIps = $this->safaricomIps;
 
         // Verify the request comes from allowed IPs
         if (! in_array($clientIp, $allowedIps)) {

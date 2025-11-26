@@ -45,10 +45,8 @@ class LaravelMpesaCommand extends Command
         // Step 3: Publish Config
         $this->publishConfig();
 
-        // Step 4: Publish Migrations (if multi-tenant)
-        if ($this->scenario === 'multi_tenant') {
-            $this->publishMigrations();
-        }
+        // Step 4: Publish Migrations
+        $this->publishMigrations();
 
         // Step 5: Publish Example Model (if multi-tenant)
         if ($this->scenario === 'multi_tenant') {
@@ -445,24 +443,11 @@ class LaravelMpesaCommand extends Command
 
     protected function publishMigrations(): void
     {
-        $migrationExists = collect(File::files(database_path('migrations')))
-            ->contains(fn ($file) => str_contains($file->getFilename(), 'create_mpesa_accounts_table'));
-
-        if ($migrationExists && ! $this->option('force')) {
-            $this->components->info('Migration already exists. Skipping...');
-
-            return;
-        }
-
-        $timestamp = date('Y_m_d_His');
-        $migrationPath = database_path("migrations/{$timestamp}_create_laravel_mpesa_tables.php");
-
-        File::copy(
-            __DIR__.'/../../database/migrations/create_laravel_mpesa_tables.php',
-            $migrationPath
-        );
-
-        $this->components->info("Migration published: {$migrationPath}");
+        $this->call('vendor:publish', [
+            '--tag' => 'laravel-mpesa-migrations',
+            '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
+        ]);
+        $this->components->info('✓ Migrations published');
     }
 
     protected function publishExampleModel(): void
@@ -568,7 +553,6 @@ class LaravelMpesaCommand extends Command
             options: [
                 'events' => 'Events - Publish M-Pesa events to app/Events/Mpesa',
                 'service' => 'Service Class - Publish MpesaService for dependency injection',
-                'migrations' => 'Migrations - Publish database migrations',
                 'stubs' => 'Stubs - Publish package stubs for customization',
             ],
             default: ['service'],
@@ -589,19 +573,6 @@ class LaravelMpesaCommand extends Command
                 '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
             ]);
             $this->components->info('✓ MpesaService published to app/Services/Mpesa');
-        }
-
-        if (in_array('migrations', $resources)) {
-            // Check if we already published migrations via scenario selection
-            if ($this->scenario !== 'multi_tenant') {
-                $this->call('vendor:publish', [
-                    '--tag' => 'laravel-mpesa-migrations',
-                    '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
-                ]);
-                $this->components->info('✓ Migrations published');
-            } else {
-                $this->components->info('! Migrations already published via scenario selection');
-            }
         }
 
         if (in_array('stubs', $resources)) {
@@ -629,11 +600,12 @@ class LaravelMpesaCommand extends Command
 
         $this->components->info('Registering middleware...');
 
-        // Pattern to find ->withMiddleware(function (Middleware $middleware) {
-        $pattern = '/->withMiddleware\s*\(\s*function\s*\(\s*Middleware\s+\$middleware\s*\)\s*\{/';
+        // More robust pattern to find ->withMiddleware(function (...) {
+        // Handles optional return type hints like ": void"
+        $pattern = '/(->withMiddleware\s*\(\s*function\s*\([^\)]+\)\s*(?::\s*[a-zA-Z0-9_\\\\]+\s*)?\{)/';
 
         if (preg_match($pattern, $content)) {
-            $replacement = "->withMiddleware(function (Middleware \$middleware) {\n        \$middleware->alias([\n            'mpesa.verify' => \Joemuigai\LaravelMpesa\Http\Middleware\VerifyMpesaCallback::class,\n        ]);";
+            $replacement = "$1\n        \$middleware->alias([\n            'mpesa.verify' => \Joemuigai\LaravelMpesa\Http\Middleware\VerifyMpesaCallback::class,\n        ]);";
 
             $newContent = preg_replace($pattern, $replacement, $content);
 
@@ -641,6 +613,10 @@ class LaravelMpesaCommand extends Command
                 file_put_contents($bootstrapApp, $newContent);
                 $this->components->info('✓ Middleware registered in bootstrap/app.php');
             }
+        } else {
+            // Fallback: Try to find ->withMiddleware(function ($middleware) {
+            $this->components->warn('Could not automatically register middleware. Please add it manually to bootstrap/app.php:');
+            $this->line("->withMiddleware(function (Middleware \$middleware) {\n    \$middleware->alias([\n        'mpesa.verify' => \Joemuigai\LaravelMpesa\Http\Middleware\VerifyMpesaCallback::class,\n    ]);\n})");
         }
     }
 
