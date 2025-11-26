@@ -14,9 +14,29 @@ class MpesaCallback extends Model
     protected $table = 'mpesa_callbacks';
 
     /**
+     * @var string
+     */
+    protected $callback_type;
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $payload;
+
+    /**
+     * @var bool
+     */
+    protected $processed;
+
+    /**
+     * @var \Illuminate\Support\Carbon|null
+     */
+    protected $processed_at;
+
+    /**
      * The attributes that are mass assignable.
      *
-     * @var array<string>
+     * @var list<string>
      */
     protected $fillable = [
         'callback_type',

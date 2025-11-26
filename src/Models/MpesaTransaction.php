@@ -14,9 +14,14 @@ class MpesaTransaction extends Model
     protected $table = 'mpesa_transactions';
 
     /**
+     * @var array<string, mixed>|null
+     */
+    protected $response_payload;
+
+    /**
      * The attributes that are mass assignable.
      *
-     * @var array<string>
+     * @var list<string>
      */
     protected $fillable = [
         'transaction_type',

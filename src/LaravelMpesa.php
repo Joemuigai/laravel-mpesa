@@ -176,7 +176,7 @@ class LaravelMpesa
             return $accessToken;
         }
 
-        throw new MpesaAuthenticationException('Failed to generate access token: '.$response->body());
+        throw new MpesaAuthenticationException('Failed to generate access token: ' . $response->body());
     }
 
     /**
@@ -184,7 +184,7 @@ class LaravelMpesa
      */
     protected function generatePassword(string $shortcode, string $passkey, string $timestamp): string
     {
-        return base64_encode($shortcode.$passkey.$timestamp);
+        return base64_encode($shortcode . $passkey . $timestamp);
     }
 
     /**
@@ -254,12 +254,12 @@ class LaravelMpesa
 
         // If starts with 0, replace with 254
         if (str_starts_with($number, '0')) {
-            return '254'.substr($number, 1);
+            return '254' . substr($number, 1);
         }
 
         // If starts with 7 or 1 (and is 9 digits), prepend 254
         if ((str_starts_with($number, '7') || str_starts_with($number, '1')) && strlen($number) === 9) {
-            return '254'.$number;
+            return '254' . $number;
         }
 
         // If starts with 254, return as is
@@ -439,20 +439,12 @@ class LaravelMpesa
      * Reverse a Transaction.
      *
      * @param  int|float  $amount
-     * @param  string|null  $receiverParty
      *
-     * @throws Exception
+     * @throws MpesaApiException
      */
     public function reversal(string $transactionId, $amount, string $receiverParty, string $receiverIdentifierType = '11', ?string $remarks = null, ?string $occasion = null): array
     {
-        $token = $this->getAccessToken();
-
-        $initiatorName = $this->getConfig('initiator.name');
-        $initiatorPassword = $this->getConfig('initiator.password');
-        $securityCredential = $this->generateSecurityCredential($initiatorPassword);
-
-        // ReceiverParty is usually the Shortcode for C2B reversals
-        $receiverParty = $receiverParty ?? $this->getConfig('c2b.shortcode');
+        extract($this->getInitiatorCredentials());
 
         $payload = [
             'Initiator' => $initiatorName,
