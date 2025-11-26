@@ -74,11 +74,6 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
                 __DIR__.'/Events' => app_path('Events/Mpesa'),
             ], 'mpesa-events');
 
-            // Publish migrations (alternative to hasMigrations)
-            $this->publishes([
-                __DIR__.'/../database/migrations' => database_path('migrations'),
-            ], 'mpesa-migrations');
-
             // Publish config (alternative to hasConfigFile)
             $this->publishes([
                 __DIR__.'/../config/mpesa.php' => config_path('mpesa.php'),

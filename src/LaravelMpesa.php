@@ -61,6 +61,17 @@ class LaravelMpesa
     }
 
     /**
+     * Override passkey for this request (STK Push).
+     */
+    public function withPasskey(string $passkey): self
+    {
+        $instance = clone $this;
+        $instance->overrides['passkey'] = $passkey;
+
+        return $instance;
+    }
+
+    /**
      * Override callback URL for this request.
      */
     public function withCallbackUrl(string $callbackUrl): self
