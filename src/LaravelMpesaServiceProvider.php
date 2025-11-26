@@ -2,7 +2,11 @@
 
 namespace Joemuigai\LaravelMpesa;
 
+use Illuminate\Routing\Router;
 use Joemuigai\LaravelMpesa\Commands\LaravelMpesaCommand;
+use Joemuigai\LaravelMpesa\Commands\SimulateCallbackCommand;
+use Joemuigai\LaravelMpesa\Http\Middleware\VerifyMpesaCallback;
+use Joemuigai\LaravelMpesa\Services\CallbackParser;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -19,8 +23,15 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             ->name('laravel-mpesa')
             ->hasConfigFile()
             ->hasViews()
-            ->hasMigration('create_mpesa_accounts_table')
-            ->hasCommand(LaravelMpesaCommand::class);
+            ->hasMigrations([
+                'create_mpesa_accounts_table',
+                'create_mpesa_callbacks_table',
+                'create_mpesa_transactions_table',
+            ])
+            ->hasCommands([
+                LaravelMpesaCommand::class,
+                SimulateCallbackCommand::class,
+            ]);
     }
 
     public function packageRegistered(): void
@@ -32,10 +43,55 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
 
         // Register facade alias
         $this->app->alias(LaravelMpesa::class, 'laravel-mpesa');
+
+        // Register CallbackParser service
+        $this->app->singleton(CallbackParser::class, function ($app) {
+            return new CallbackParser;
+        });
     }
 
     public function packageBooted(): void
     {
-        // Additional boot logic can be added here if needed
+        // Register middleware
+        $router = $this->app->make(Router::class);
+        $router->aliasMiddleware('mpesa.verify', VerifyMpesaCallback::class);
+
+        // Register publishable resources
+        if ($this->app->runningInConsole()) {
+            // Controller
+            $this->publishes([
+                __DIR__.'/../stubs/Controllers/MpesaCallbackController.stub' => app_path('Http/Controllers/MpesaCallbackController.php'),
+            ], 'laravel-mpesa-controller');
+
+            // Routes
+            $this->publishes([
+                __DIR__.'/../stubs/routes/mpesa-callbacks.stub' => base_path('routes/mpesa.php'),
+            ], 'laravel-mpesa-routes');
+
+            // Documentation
+            $this->publishes([
+                __DIR__.'/../stubs/CALLBACKS_SETUP.md' => base_path('CALLBACKS_SETUP.md'),
+            ], 'laravel-mpesa-docs');
+
+            // Publish events
+            $this->publishes([
+                __DIR__.'/Events' => app_path('Events/Mpesa'),
+            ], 'mpesa-events');
+
+            // Publish migrations (alternative to hasMigrations)
+            $this->publishes([
+                __DIR__.'/../database/migrations' => database_path('migrations'),
+            ], 'mpesa-migrations');
+
+            // Publish config (alternative to hasConfigFile)
+            $this->publishes([
+                __DIR__.'/../config/mpesa.php' => config_path('mpesa.php'),
+            ], 'mpesa-config');
+
+            // Publish all stubs
+            $this->publishes([
+                __DIR__.'/../stubs' => base_path('stubs/mpesa'),
+            ], 'mpesa-stubs');
+        }
     }
 }

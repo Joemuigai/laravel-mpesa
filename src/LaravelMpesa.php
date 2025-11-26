@@ -6,14 +6,16 @@ use Exception;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Joemuigai\LaravelMpesa\Events\B2CInitiated;
+use Joemuigai\LaravelMpesa\Events\StkPushInitiated;
+use Joemuigai\LaravelMpesa\Exceptions\MpesaApiException;
+use Joemuigai\LaravelMpesa\Exceptions\MpesaAuthenticationException;
+use Joemuigai\LaravelMpesa\Exceptions\MpesaConfigurationException;
+use Joemuigai\LaravelMpesa\Models\MpesaTransaction;
+use Joemuigai\LaravelMpesa\Support\ExponentialBackoff;
 
 class LaravelMpesa
 {
-    /**
-     * Account ID for multi-tenant scenarios.
-     */
-    protected ?string $accountId = null;
-
     /**
      * Runtime configuration overrides.
      */
@@ -30,37 +32,21 @@ class LaravelMpesa
     }
 
     /**
-     * Get a configured HTTP client instance.
+     * Get a configured HTTP client instance with exponential backoff.
      */
     protected function getHttpClient()
     {
+        $maxRetries = config('mpesa.http.retries', 3);
+        $delays = ExponentialBackoff::getDelays($maxRetries);
+
         return Http::timeout(config('mpesa.http.timeout', 30))
-            ->retry(config('mpesa.http.retries', 3), 100)
+            ->retry(
+                $maxRetries,
+                function ($attempt, $exception) use ($delays) {
+                    return $delays[$attempt - 1] ?? 100;
+                }
+            )
             ->baseUrl($this->getBaseUrl());
-    }
-
-    /**
-     * Set account context for multi-tenant scenarios.
-     */
-    public function forAccount(string $accountId): self
-    {
-        $instance = clone $this;
-        $instance->accountId = $accountId;
-
-        return $instance;
-    }
-
-    /**
-     * Set account using model instance.
-     *
-     * @param  mixed  $account  Model with 'id' property or identifier
-     */
-    public function withAccount($account): self
-    {
-        $instance = clone $this;
-        $instance->accountId = is_object($account) && isset($account->id) ? $account->id : (string) $account;
-
-        return $instance;
     }
 
     /**
@@ -94,6 +80,17 @@ class LaravelMpesa
     {
         $instance = clone $this;
         $instance->overrides['transaction_type'] = $transactionType;
+
+        return $instance;
+    }
+
+    /**
+     * Set idempotency key for this request.
+     */
+    public function withIdempotencyKey(string $key): self
+    {
+        $instance = clone $this;
+        $instance->overrides['idempotency_key'] = $key;
 
         return $instance;
     }
@@ -140,44 +137,8 @@ class LaravelMpesa
             return $this->overrides[$lastSegment];
         }
 
-        // Priority 2: Account-specific config (database driver)
-        if ($this->accountId && config('mpesa.accounts.driver') === 'database') {
-            return $this->getAccountConfig($this->accountId, $key, $default);
-        }
-
-        // Priority 3: Default config
+        // Priority 2: Default config
         return config("mpesa.{$key}", $default);
-    }
-
-    /**
-     * Load account-specific configuration from database.
-     *
-     * @param  mixed  $default
-     * @return mixed
-     *
-     * @throws Exception
-     */
-    protected function getAccountConfig(string $accountId, string $key, $default = null)
-    {
-        $cacheKey = "mpesa.account.{$accountId}.{$key}";
-        $cacheTtl = config('mpesa.accounts.cache_ttl', 300);
-
-        return Cache::remember($cacheKey, $cacheTtl, function () use ($accountId, $key, $default) {
-            $modelClass = config('mpesa.accounts.model');
-
-            if (! $modelClass || ! class_exists($modelClass)) {
-                throw new Exception("M-Pesa account model not configured or does not exist: {$modelClass}");
-            }
-
-            $account = $modelClass::find($accountId);
-
-            if (! $account) {
-                throw new Exception("M-Pesa account not found: {$accountId}");
-            }
-
-            // Access nested config via dot notation from 'credentials' JSON column
-            return data_get($account->credentials, $key, $default);
-        });
     }
 
     /**
@@ -185,20 +146,20 @@ class LaravelMpesa
      *
      * @throws Exception
      */
+    /**
+     * Get a valid Access Token from Safaricom.
+     *
+     * @throws Exception
+     */
     public function getAccessToken(): string
     {
-        // Different cache key per account for multi-tenant scenarios
-        $cacheKey = $this->accountId
-            ? "mpesa_access_token_{$this->accountId}"
-            : 'mpesa_access_token';
-
-        // Check if we have a valid token in cache
-        if (Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
-        }
-
         $consumerKey = $this->getConfig('credentials.consumer_key');
         $consumerSecret = $this->getConfig('credentials.consumer_secret');
+
+        // Check if we have a valid token in cache
+        if (Cache::has('mpesa_access_token')) {
+            return Cache::get('mpesa_access_token');
+        }
 
         $response = $this->getHttpClient()
             ->withBasicAuth($consumerKey, $consumerSecret)
@@ -210,12 +171,12 @@ class LaravelMpesa
             $expiresIn = $data['expires_in'];
 
             // Cache the token for slightly less than the expiry time to be safe
-            Cache::put($cacheKey, $accessToken, $expiresIn - 60);
+            Cache::put('mpesa_access_token', $accessToken, $expiresIn - 60);
 
             return $accessToken;
         }
 
-        throw new Exception('Failed to generate access token: '.$response->body());
+        throw new MpesaAuthenticationException('Failed to generate access token: '.$response->body());
     }
 
     /**
@@ -278,15 +239,9 @@ class LaravelMpesa
             'TransactionDesc' => $description ?? $this->getConfig('stk.defaults.transaction_desc', 'Payment'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/stkpush/v1/processrequest', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('STK Push failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/stkpush/v1/processrequest', $payload, 'stk_push', [
+            'event_class' => StkPushInitiated::class,
+        ]);
     }
 
     /**
@@ -331,15 +286,7 @@ class LaravelMpesa
             'ValidationURL' => $this->getConfig('c2b.validation_url'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/c2b/v1/registerurl', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('C2B Register URL failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/c2b/v1/registerurl', $payload, 'c2b_register_url');
     }
 
     /**
@@ -364,15 +311,7 @@ class LaravelMpesa
             'BillRefNumber' => $accountNumber ?? 'Test',
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/c2b/v1/simulate', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('C2B Simulate failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/c2b/v1/simulate', $payload, 'c2b_simulate');
     }
 
     /**
@@ -386,7 +325,10 @@ class LaravelMpesa
         $certPath = $this->getConfig("security.certificates.{$env}");
 
         if (! file_exists($certPath)) {
-            throw new Exception("Certificate file not found at: {$certPath}");
+            throw MpesaConfigurationException::invalidConfig(
+                "security.certificates.{$env}",
+                "Certificate file not found at: {$certPath}"
+            );
         }
 
         $pubKey = file_get_contents($certPath);
@@ -427,15 +369,9 @@ class LaravelMpesa
             'Occasion' => $occasion ?? $this->getConfig('b2c.defaults.occasion'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/b2c/v3/paymentrequest', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('B2C Payment failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/b2c/v3/paymentrequest', $payload, 'b2c_payment', [
+            'event_class' => B2CInitiated::class,
+        ]);
     }
 
     /**
@@ -467,15 +403,7 @@ class LaravelMpesa
             'Occasion' => $occasion ?? $this->getConfig('transaction_status.defaults.occasion'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/transactionstatus/v1/query', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('Transaction Status Query failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/transactionstatus/v1/query', $payload, 'transaction_status_query');
     }
 
     /**
@@ -504,15 +432,7 @@ class LaravelMpesa
             'ResultURL' => $this->getConfig('callbacks.balance.result'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/accountbalance/v1/query', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('Account Balance Query failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/accountbalance/v1/query', $payload, 'account_balance_query');
     }
 
     /**
@@ -548,15 +468,7 @@ class LaravelMpesa
             'Occasion' => $occasion,
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/reversal/v1/request', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('Reversal failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/reversal/v1/request', $payload, 'reversal_request');
     }
 
     /**
@@ -581,15 +493,7 @@ class LaravelMpesa
             'Size' => $size,
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/qrcode/v1/generate', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('Dynamic QR Code generation failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/qrcode/v1/generate', $payload, 'dynamic_qr');
     }
 
     /**
@@ -608,15 +512,7 @@ class LaravelMpesa
             'CallBackURL' => $this->getConfig('pull.register.callback_url'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/pulltransactions/v1/register', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('Pull Transaction Register failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/pulltransactions/v1/register', $payload, 'pull_transaction_register');
     }
 
     /**
@@ -651,15 +547,7 @@ class LaravelMpesa
             'ResultURL' => $this->getConfig('callbacks.b2b.result'),
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/b2b/v1/paymentrequest', $payload);
-
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        throw new Exception('B2B Payment failed: '.$response->body());
+        return $this->sendRequest('post', '/mpesa/b2b/v1/paymentrequest', $payload, 'b2b_payment');
     }
 
     /**
@@ -683,14 +571,92 @@ class LaravelMpesa
             'CheckoutRequestID' => $checkoutRequestId,
         ];
 
-        $response = $this->getHttpClient()
-            ->withToken($token)
-            ->post('/mpesa/stkpushquery/v1/query', $payload);
+        return $this->sendRequest('post', '/mpesa/stkpushquery/v1/query', $payload, 'stk_push_query');
+    }
 
-        if ($response->successful()) {
-            return $response->json();
+    /**
+     * Send request to M-Pesa API with automatic logging.
+     *
+     * @throws Exception
+     */
+    protected function sendRequest(string $method, string $endpoint, array $payload, string $transactionType, array $metadata = []): array
+    {
+        // Check for idempotency
+        $idempotencyKey = $this->overrides['idempotency_key'] ?? null;
+        if ($idempotencyKey) {
+            $existing = MpesaTransaction::where('idempotency_key', $idempotencyKey)
+                ->where('status', 'SUCCESS')
+                ->first();
+
+            if ($existing && $existing->response_payload) {
+                return $existing->response_payload;
+            }
         }
 
-        throw new Exception('STK Push Query failed: '.$response->body());
+        $token = $this->getAccessToken();
+
+        // Create pending transaction log
+        $transaction = null;
+        if (config('mpesa.logging.enabled', true)) {
+            try {
+                $transaction = MpesaTransaction::create(array_merge([
+                    'transaction_type' => $transactionType,
+                    'idempotency_key' => $idempotencyKey,
+                    'status' => 'PENDING',
+                    'request_payload' => $payload,
+                    'merchant_request_id' => null,
+                    'checkout_request_id' => $payload['CheckoutRequestID'] ?? null,
+                    'party_a' => $payload['PartyA'] ?? null,
+                    'party_b' => $payload['PartyB'] ?? null,
+                    'amount' => $payload['Amount'] ?? null,
+                    'account_reference' => $payload['AccountReference'] ?? ($payload['BillRefNumber'] ?? null),
+                    'transaction_desc' => $payload['TransactionDesc'] ?? ($payload['Remarks'] ?? null),
+                    'remarks' => $payload['Remarks'] ?? null,
+                ], $metadata));
+            } catch (Exception $e) {
+                // Silently fail logging to not disrupt the transaction
+            }
+        }
+
+        // Send request
+        $response = $this->getHttpClient()
+            ->withToken($token)
+            ->$method($endpoint, $payload);
+
+        $responseData = $response->json();
+
+        // Update transaction log
+        if ($transaction) {
+            try {
+                $status = $response->successful() ? 'SUCCESS' : 'FAILED';
+
+                $updateData = [
+                    'status' => $status,
+                    'response_payload' => $responseData,
+                    'result_code' => $responseData['ResponseCode'] ?? ($responseData['ResultCode'] ?? null),
+                    'result_desc' => $responseData['ResponseDescription'] ?? ($responseData['ResultDesc'] ?? ($responseData['errorMessage'] ?? null)),
+                    'merchant_request_id' => $responseData['MerchantRequestID'] ?? null,
+                    'checkout_request_id' => $responseData['CheckoutRequestID'] ?? null,
+                    'conversation_id' => $responseData['ConversationID'] ?? null,
+                    'originator_conversation_id' => $responseData['OriginatorConversationID'] ?? null,
+                ];
+
+                $transaction->update($updateData);
+
+                // Dispatch event if specified
+                if ($transaction && isset($metadata['event_class'])) {
+                    $eventClass = $metadata['event_class'];
+                    event(new $eventClass($transaction));
+                }
+            } catch (Exception $e) {
+                // Silently fail logging
+            }
+        }
+
+        if ($response->successful()) {
+            return $responseData;
+        }
+
+        throw MpesaApiException::fromResponse($transactionType, $responseData);
     }
 }
