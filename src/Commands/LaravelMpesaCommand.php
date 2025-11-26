@@ -611,6 +611,7 @@ class LaravelMpesaCommand extends Command
 
             $newContent = preg_replace($pattern, $replacement, $content);
 
+
             if ($newContent !== null && $newContent !== $content) {
                 file_put_contents($bootstrapApp, $newContent);
                 $this->components->info('✓ Middleware registered in bootstrap/app.php');
