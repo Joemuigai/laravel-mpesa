@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-mpesa` will be documented in this file.
 
+## 0.2.5 - 2025-11-26
+
+### What's Changed
+
+* Dev branch by @Joemuigai in https://github.com/Joemuigai/laravel-mpesa/pull/10
+
+**Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/0.2.4...0.2.5
+
 ## 0.2.4 - 2025-11-26
 
 ### What's Changed
