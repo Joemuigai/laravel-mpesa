@@ -27,4 +27,12 @@ it('generates config with comments', function () {
     $envComment = new MpesaComment(new MpesaEnv('KEY', 'default'), 'Env comment');
     $output = $method->invoke($command, $envComment);
     expect($output)->toBe("env('KEY', 'default') // Env comment");
+
+    // Test array with inline comment (Fix verification)
+    $arrayWithInline = [
+        'key' => new MpesaComment('value', 'Inline comment'),
+    ];
+    $output = $method->invoke($command, $arrayWithInline);
+    // Expect comma BEFORE the comment
+    expect($output)->toContain("'key' => 'value', // Inline comment");
 });

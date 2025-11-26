@@ -23,11 +23,7 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             ->name('laravel-mpesa')
             ->hasConfigFile()
             ->hasViews()
-            ->hasMigrations([
-                'create_mpesa_accounts_table',
-                'create_mpesa_callbacks_table',
-                'create_mpesa_transactions_table',
-            ])
+            ->hasMigration('create_laravel_mpesa_tables')
             ->hasCommands([
                 LaravelMpesaCommand::class,
                 SimulateCallbackCommand::class,
@@ -60,37 +56,37 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
         if ($this->app->runningInConsole()) {
             // Controller
             $this->publishes([
-                __DIR__.'/../stubs/Controllers/MpesaCallbackController.stub' => app_path('Http/Controllers/MpesaCallbackController.php'),
+                __DIR__ . '/../stubs/Controllers/MpesaCallbackController.stub' => app_path('Http/Controllers/MpesaCallbackController.php'),
             ], 'laravel-mpesa-controller');
 
             // Routes
             $this->publishes([
-                __DIR__.'/../stubs/routes/mpesa-callbacks.stub' => base_path('routes/mpesa.php'),
+                __DIR__ . '/../stubs/routes/mpesa-callbacks.stub' => base_path('routes/mpesa.php'),
             ], 'laravel-mpesa-routes');
 
             // Documentation
             $this->publishes([
-                __DIR__.'/../stubs/CALLBACKS_SETUP.md' => base_path('CALLBACKS_SETUP.md'),
+                __DIR__ . '/../stubs/CALLBACKS_SETUP.md' => base_path('CALLBACKS_SETUP.md'),
             ], 'laravel-mpesa-docs');
 
             // Publish events
             $this->publishes([
-                __DIR__.'/Events' => app_path('Events/Mpesa'),
+                __DIR__ . '/Events' => app_path('Events/Mpesa'),
             ], 'mpesa-events');
 
             // Publish migrations (alternative to hasMigrations)
             $this->publishes([
-                __DIR__.'/../database/migrations' => database_path('migrations'),
+                __DIR__ . '/../database/migrations' => database_path('migrations'),
             ], 'mpesa-migrations');
 
             // Publish config (alternative to hasConfigFile)
             $this->publishes([
-                __DIR__.'/../config/mpesa.php' => config_path('mpesa.php'),
+                __DIR__ . '/../config/mpesa.php' => config_path('mpesa.php'),
             ], 'mpesa-config');
 
             // Publish all stubs
             $this->publishes([
-                __DIR__.'/../stubs' => base_path('stubs/mpesa'),
+                __DIR__ . '/../stubs' => base_path('stubs/mpesa'),
             ], 'mpesa-stubs');
         }
     }
