@@ -64,7 +64,10 @@ class LaravelMpesaCommand extends Command
         // Step 8: Publish additional resources
         $this->publishAdditionalResources();
 
-        // Step 9: Show next steps
+        // Step 9: Register Middleware
+        $this->registerMiddleware();
+
+        // Step 10: Show next steps
         $this->showNextSteps();
 
         return self::SUCCESS;
@@ -592,7 +595,7 @@ class LaravelMpesaCommand extends Command
             // Check if we already published migrations via scenario selection
             if ($this->scenario !== 'multi_tenant') {
                 $this->call('vendor:publish', [
-                    '--tag' => 'mpesa-migrations',
+                    '--tag' => 'laravel-mpesa-migrations',
                     '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
                 ]);
                 $this->components->info('✓ Migrations published');
@@ -607,6 +610,37 @@ class LaravelMpesaCommand extends Command
                 '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
             ]);
             $this->components->info('✓ Stubs published');
+        }
+    }
+
+    protected function registerMiddleware(): void
+    {
+        $bootstrapApp = base_path('bootstrap/app.php');
+
+        if (! file_exists($bootstrapApp)) {
+            return;
+        }
+
+        $content = file_get_contents($bootstrapApp);
+
+        if (str_contains($content, 'mpesa.verify')) {
+            return;
+        }
+
+        $this->components->info('Registering middleware...');
+
+        // Pattern to find ->withMiddleware(function (Middleware $middleware) {
+        $pattern = '/->withMiddleware\s*\(\s*function\s*\(\s*Middleware\s+\$middleware\s*\)\s*\{/';
+        
+        if (preg_match($pattern, $content)) {
+            $replacement = "->withMiddleware(function (Middleware \$middleware) {\n        \$middleware->alias([\n            'mpesa.verify' => \Joemuigai\LaravelMpesa\Http\Middleware\VerifyMpesaCallback::class,\n        ]);";
+            
+            $newContent = preg_replace($pattern, $replacement, $content);
+            
+            if ($newContent !== null && $newContent !== $content) {
+                file_put_contents($bootstrapApp, $newContent);
+                $this->components->info('✓ Middleware registered in bootstrap/app.php');
+            }
         }
     }
 
