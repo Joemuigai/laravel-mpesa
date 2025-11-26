@@ -88,6 +88,11 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             $this->publishes([
                 __DIR__ . '/../stubs' => base_path('stubs/mpesa'),
             ], 'mpesa-stubs');
+
+            // Publish Service Class
+            $this->publishes([
+                __DIR__ . '/../stubs/Services/MpesaService.stub' => app_path('Services/Mpesa/MpesaService.php'),
+            ], 'mpesa-service');
         }
     }
 }

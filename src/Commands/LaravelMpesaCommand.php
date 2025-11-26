@@ -564,10 +564,11 @@ class LaravelMpesaCommand extends Command
             label: 'Which additional resources would you like to publish?',
             options: [
                 'events' => 'Events - Publish M-Pesa events to app/Events/Mpesa',
+                'service' => 'Service Class - Publish MpesaService for dependency injection',
                 'migrations' => 'Migrations - Publish database migrations',
                 'stubs' => 'Stubs - Publish package stubs for customization',
             ],
-            default: [],
+            default: ['service'],
             hint: 'Select resources to copy to your application'
         );
 
@@ -577,6 +578,14 @@ class LaravelMpesaCommand extends Command
                 '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
             ]);
             $this->components->info('✓ Events published');
+        }
+
+        if (in_array('service', $resources)) {
+            $this->call('vendor:publish', [
+                '--tag' => 'mpesa-service',
+                '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
+            ]);
+            $this->components->info('✓ MpesaService published to app/Services/Mpesa');
         }
 
         if (in_array('migrations', $resources)) {

@@ -1,0 +1,155 @@
+<?php
+
+namespace App\Services\Mpesa;
+
+use Joemuigai\LaravelMpesa\Facades\LaravelMpesa;
+
+class MpesaService
+{
+    /**
+     * Initiate an STK Push (Lipa Na M-Pesa Online) request.
+     *
+     * @param int|float $amount The amount to transact.
+     * @param string $phoneNumber The customer's phone number.
+     * @param string|null $reference Account reference (e.g., Invoice Number).
+     * @param string|null $description Transaction description.
+     * @return array The API response.
+     */
+    public function stkPush($amount, string $phoneNumber, ?string $reference = null, ?string $description = null): array
+    {
+        return LaravelMpesa::stkPush($amount, $phoneNumber, $reference, $description);
+    }
+
+    /**
+     * Query the status of an STK Push transaction.
+     *
+     * @param string $checkoutRequestId The CheckoutRequestID from the initial STK Push response.
+     * @return array The API response.
+     */
+    public function stkPushQuery(string $checkoutRequestId): array
+    {
+        return LaravelMpesa::stkPushQuery($checkoutRequestId);
+    }
+
+    /**
+     * Register validation and confirmation URLs for C2B transactions.
+     *
+     * @return array The API response.
+     */
+    public function c2bRegisterUrl(): array
+    {
+        return LaravelMpesa::c2bRegisterUrl();
+    }
+
+    /**
+     * Simulate a C2B transaction (Sandbox only).
+     *
+     * @param int|float $amount The amount to transact.
+     * @param string $phoneNumber The customer's phone number.
+     * @param string|null $commandId Unique command ID (default: CustomerPayBillOnline).
+     * @param string|null $accountNumber Account number (default: generated).
+     * @return array The API response.
+     */
+    public function c2bSimulate($amount, string $phoneNumber, ?string $commandId = null, ?string $accountNumber = null): array
+    {
+        return LaravelMpesa::c2bSimulate($amount, $phoneNumber, $commandId, $accountNumber);
+    }
+
+    /**
+     * Initiate a Business to Customer (B2C) payment.
+     *
+     * @param int|float $amount The amount to transact.
+     * @param string $phoneNumber The customer's phone number.
+     * @param string|null $commandId Command ID (SalaryPayment, BusinessPayment, PromotionPayment).
+     * @param string|null $remarks Transaction remarks.
+     * @param string|null $occasion Transaction occasion.
+     * @return array The API response.
+     */
+    public function b2c($amount, string $phoneNumber, ?string $commandId = null, ?string $remarks = null, ?string $occasion = null): array
+    {
+        return LaravelMpesa::b2c($amount, $phoneNumber, $commandId, $remarks, $occasion);
+    }
+
+    /**
+     * Initiate a Business to Business (B2B) payment.
+     *
+     * @param int|float $amount The amount to transact.
+     * @param string $receiverShortcode The receiver's shortcode.
+     * @param string|null $commandId Command ID (BusinessPayBill, etc.).
+     * @param string|null $remarks Transaction remarks.
+     * @param string|null $accountReference Account reference.
+     * @return array The API response.
+     */
+    public function b2b($amount, string $receiverShortcode, ?string $commandId = null, ?string $remarks = null, ?string $accountReference = null): array
+    {
+        return LaravelMpesa::b2b($amount, $receiverShortcode, $commandId, $remarks, $accountReference);
+    }
+
+    /**
+     * Check the status of a transaction.
+     *
+     * @param string $transactionId The M-Pesa Transaction ID.
+     * @param string|null $originalConversationId The original conversation ID.
+     * @param string $identifierType Identifier type (1=MSISDN, 2=Till, 4=Shortcode).
+     * @param string|null $remarks Remarks.
+     * @param string|null $occasion Occasion.
+     * @return array The API response.
+     */
+    public function transactionStatus(string $transactionId, ?string $originalConversationId = null, string $identifierType = '4', ?string $remarks = null, ?string $occasion = null): array
+    {
+        return LaravelMpesa::transactionStatus($transactionId, $originalConversationId, $identifierType, $remarks, $occasion);
+    }
+
+    /**
+     * Check the account balance.
+     *
+     * @param string $identifierType Identifier type (4=Shortcode).
+     * @param string|null $remarks Remarks.
+     * @return array The API response.
+     */
+    public function accountBalance(string $identifierType = '4', ?string $remarks = null): array
+    {
+        return LaravelMpesa::accountBalance($identifierType, $remarks);
+    }
+
+    /**
+     * Reverse a transaction.
+     *
+     * @param string $transactionId The M-Pesa Transaction ID to reverse.
+     * @param int|float $amount The amount to reverse.
+     * @param string $receiverParty The receiver party (usually the shortcode).
+     * @param string $receiverIdentifierType Identifier type (11=MSISDN, 4=Shortcode).
+     * @param string|null $remarks Remarks.
+     * @param string|null $occasion Occasion.
+     * @return array The API response.
+     */
+    public function reversal(string $transactionId, $amount, string $receiverParty, string $receiverIdentifierType = '11', ?string $remarks = null, ?string $occasion = null): array
+    {
+        return LaravelMpesa::reversal($transactionId, $amount, $receiverParty, $receiverIdentifierType, $remarks, $occasion);
+    }
+
+    /**
+     * Generate a Dynamic QR Code.
+     *
+     * @param int|float $amount The amount.
+     * @param string $refNo Reference number.
+     * @param string $trxCode Transaction code (PB, BG, WA, SM).
+     * @param string $cpi Credit Party Identifier (Shortcode/Till/Phone).
+     * @param int $size QR code size.
+     * @return array The API response.
+     */
+    public function dynamicQr($amount, string $refNo, string $trxCode, string $cpi, int $size = 300): array
+    {
+        return LaravelMpesa::dynamicQr($amount, $refNo, $trxCode, $cpi, $size);
+    }
+
+    /**
+     * Register URLs for Pull Transactions.
+     *
+     * @return array The API response.
+     */
+    public function pullTransactionRegister(): array
+    {
+        return LaravelMpesa::pullTransactionRegister();
+    }
+}
