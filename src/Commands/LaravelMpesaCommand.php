@@ -61,7 +61,10 @@ class LaravelMpesaCommand extends Command
         // Step 7: Handle environment variables
         $this->handleEnvironmentVariables();
 
-        // Step 7: Show next steps
+        // Step 8: Publish additional resources
+        $this->publishAdditionalResources();
+
+        // Step 9: Show next steps
         $this->showNextSteps();
 
         return self::SUCCESS;
@@ -449,10 +452,10 @@ class LaravelMpesaCommand extends Command
         }
 
         $timestamp = date('Y_m_d_His');
-        $migrationPath = database_path("migrations/{$timestamp}_create_mpesa_accounts_table.php");
+        $migrationPath = database_path("migrations/{$timestamp}_create_laravel_mpesa_tables.php");
 
         File::copy(
-            __DIR__.'/../../database/migrations/2024_01_01_000000_create_mpesa_accounts_table.php',
+            __DIR__.'/../../database/migrations/create_laravel_mpesa_tables.php',
             $migrationPath
         );
 
@@ -549,6 +552,61 @@ class LaravelMpesaCommand extends Command
             $this->components->info('✓ Environment variables added to .env file');
         } else {
             $this->components->info('⚠ Remember to manually add these variables to your .env file');
+        }
+    }
+
+    protected function publishAdditionalResources(): void
+    {
+        $this->newLine();
+        $this->components->info('📦 Additional Resources');
+
+        $resources = multiselect(
+            label: 'Which additional resources would you like to publish?',
+            options: [
+                'events' => 'Events - Publish M-Pesa events to app/Events/Mpesa',
+                'service' => 'Service Class - Publish MpesaService for dependency injection',
+                'migrations' => 'Migrations - Publish database migrations',
+                'stubs' => 'Stubs - Publish package stubs for customization',
+            ],
+            default: ['service'],
+            hint: 'Select resources to copy to your application'
+        );
+
+        if (in_array('events', $resources)) {
+            $this->call('vendor:publish', [
+                '--tag' => 'mpesa-events',
+                '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
+            ]);
+            $this->components->info('✓ Events published');
+        }
+
+        if (in_array('service', $resources)) {
+            $this->call('vendor:publish', [
+                '--tag' => 'mpesa-service',
+                '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
+            ]);
+            $this->components->info('✓ MpesaService published to app/Services/Mpesa');
+        }
+
+        if (in_array('migrations', $resources)) {
+            // Check if we already published migrations via scenario selection
+            if ($this->scenario !== 'multi_tenant') {
+                $this->call('vendor:publish', [
+                    '--tag' => 'mpesa-migrations',
+                    '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
+                ]);
+                $this->components->info('✓ Migrations published');
+            } else {
+                $this->components->info('! Migrations already published via scenario selection');
+            }
+        }
+
+        if (in_array('stubs', $resources)) {
+            $this->call('vendor:publish', [
+                '--tag' => 'mpesa-stubs',
+                '--provider' => 'Joemuigai\LaravelMpesa\LaravelMpesaServiceProvider',
+            ]);
+            $this->components->info('✓ Stubs published');
         }
     }
 
@@ -751,7 +809,14 @@ class LaravelMpesaCommand extends Command
                 } elseif (is_string($key)) {
                     $r .= var_export($key, true).' => ';
                 }
-                $r .= $this->varExport($val, $indent).",\n";
+
+                // Special handling for inline comments in arrays to ensure comma is before comment
+                if ($val instanceof MpesaComment && $val->inline) {
+                    $exportedValue = $this->varExport($val->value, $indent);
+                    $r .= "{$exportedValue}, // {$val->comment}\n";
+                } else {
+                    $r .= $this->varExport($val, $indent).",\n";
+                }
             }
             $indent = substr($indent, 0, -4);
 

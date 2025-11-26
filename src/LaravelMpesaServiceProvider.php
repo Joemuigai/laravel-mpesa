@@ -23,11 +23,7 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             ->name('laravel-mpesa')
             ->hasConfigFile()
             ->hasViews()
-            ->hasMigrations([
-                'create_mpesa_accounts_table',
-                'create_mpesa_callbacks_table',
-                'create_mpesa_transactions_table',
-            ])
+            ->hasMigration('create_laravel_mpesa_tables')
             ->hasCommands([
                 LaravelMpesaCommand::class,
                 SimulateCallbackCommand::class,
@@ -92,6 +88,11 @@ class LaravelMpesaServiceProvider extends PackageServiceProvider
             $this->publishes([
                 __DIR__.'/../stubs' => base_path('stubs/mpesa'),
             ], 'mpesa-stubs');
+
+            // Publish Service Class
+            $this->publishes([
+                __DIR__.'/../stubs/Services/MpesaService.stub' => app_path('Services/Mpesa/MpesaService.php'),
+            ], 'mpesa-service');
         }
     }
 }
