@@ -338,6 +338,22 @@ class LaravelMpesa
     }
 
     /**
+     * Get initiator credentials with security credential.
+     *
+     * @return array{initiatorName: string, securityCredential: string}
+     *
+     * @throws MpesaConfigurationException
+     */
+    protected function getInitiatorCredentials(): array
+    {
+        $initiatorName = $this->getConfig('initiator.name');
+        $initiatorPassword = $this->getConfig('initiator.password');
+        $securityCredential = $this->generateSecurityCredential($initiatorPassword);
+
+        return compact('initiatorName', 'securityCredential');
+    }
+
+    /**
      * Initiate a B2C Payment.
      *
      * @param  int|float  $amount
@@ -439,20 +455,12 @@ class LaravelMpesa
      * Reverse a Transaction.
      *
      * @param  int|float  $amount
-     * @param  string|null  $receiverParty
      *
-     * @throws Exception
+     * @throws MpesaApiException
      */
     public function reversal(string $transactionId, $amount, string $receiverParty, string $receiverIdentifierType = '11', ?string $remarks = null, ?string $occasion = null): array
     {
-        $token = $this->getAccessToken();
-
-        $initiatorName = $this->getConfig('initiator.name');
-        $initiatorPassword = $this->getConfig('initiator.password');
-        $securityCredential = $this->generateSecurityCredential($initiatorPassword);
-
-        // ReceiverParty is usually the Shortcode for C2B reversals
-        $receiverParty = $receiverParty ?? $this->getConfig('c2b.shortcode');
+        extract($this->getInitiatorCredentials());
 
         $payload = [
             'Initiator' => $initiatorName,

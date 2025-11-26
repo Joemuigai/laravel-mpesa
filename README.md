@@ -40,6 +40,8 @@ A comprehensive, production-ready Laravel package for integrating with Safaricom
 🧪 **Well Tested** - Comprehensive test suite  
 📚 **Type Safe** - Full PHPDoc annotations
 
+👉 **[View Full Features Guide](FEATURES.md)** for detailed capabilities.
+
 ## Requirements
 
 -   PHP 8.4+

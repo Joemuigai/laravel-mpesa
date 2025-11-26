@@ -1,0 +1,55 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Array has 2 duplicate keys with value ''callbacks'' \(''callbacks'', ''callbacks''\)\.$#'
+			identifier: array.duplicateKey
+			count: 1
+			path: config/mpesa.php
+
+		-
+			message: '#^Array has 2 duplicate keys with value ''logging'' \(''logging'', ''logging''\)\.$#'
+			identifier: array.duplicateKey
+			count: 1
+			path: config/mpesa.php
+
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 84
+			path: config/mpesa.php
+
+		-
+			message: '#^Access to protected property Joemuigai\\LaravelMpesa\\Models\\MpesaTransaction\:\:\$response_payload\.$#'
+			identifier: property.protected
+			count: 2
+			path: src/LaravelMpesa.php
+
+		-
+			message: '#^Call to an undefined method Joemuigai\\LaravelMpesa\\LaravelMpesa\:\:getInitiatorCredentials\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/LaravelMpesa.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: src/LaravelMpesa.php
+
+		-
+			message: '#^Variable \$initiatorName might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/LaravelMpesa.php
+
+		-
+			message: '#^Variable \$securityCredential might not be defined\.$#'
+			identifier: variable.undefined
+			count: 1
+			path: src/LaravelMpesa.php
+
+		-
+			message: '#^Constant Joemuigai\\LaravelMpesa\\Services\\MpesaSecurityService\:\:CACHE_TTL is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: src/Services/MpesaSecurityService.php
