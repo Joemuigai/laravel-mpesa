@@ -338,6 +338,21 @@ class LaravelMpesa
     }
 
     /**
+     * Get initiator credentials with security credential.
+     *
+     * @return array{initiatorName: string, securityCredential: string}
+     * @throws MpesaConfigurationException
+     */
+    protected function getInitiatorCredentials(): array
+    {
+        $initiatorName = $this->getConfig('initiator.name');
+        $initiatorPassword = $this->getConfig('initiator.password');
+        $securityCredential = $this->generateSecurityCredential($initiatorPassword);
+
+        return compact('initiatorName', 'securityCredential');
+    }
+
+    /**
      * Initiate a B2C Payment.
      *
      * @param  int|float  $amount
