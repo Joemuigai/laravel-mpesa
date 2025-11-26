@@ -26,7 +26,7 @@ class MpesaSecurityService
      */
     public static function generatePassword(string $shortcode, string $passkey, string $timestamp): string
     {
-        return base64_encode($shortcode . $passkey . $timestamp);
+        return base64_encode($shortcode.$passkey.$timestamp);
     }
 
     /**

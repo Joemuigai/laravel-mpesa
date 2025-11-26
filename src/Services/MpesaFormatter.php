@@ -17,12 +17,12 @@ class MpesaFormatter
 
         // If starts with 0, replace with 254
         if (str_starts_with($number, '0')) {
-            return '254' . substr($number, 1);
+            return '254'.substr($number, 1);
         }
 
         // If starts with 7 or 1 (and is 9 digits), prepend 254
         if ((str_starts_with($number, '7') || str_starts_with($number, '1')) && strlen($number) === 9) {
-            return '254' . $number;
+            return '254'.$number;
         }
 
         // If starts with 254, return as is
@@ -37,7 +37,6 @@ class MpesaFormatter
      * Format amount to integer (M-Pesa expects amounts as integers).
      *
      * @param  int|float|string  $amount
-     * @return int
      */
     public static function formatAmount($amount): int
     {
