@@ -113,7 +113,7 @@ it('can initiate b2c payment', function () {
     config()->set('mpesa.b2c.shortcode', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::b2c(100, '0712345678');
 
@@ -134,7 +134,7 @@ it('can check transaction status', function () {
     config()->set('mpesa.transaction_status.party_a', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::transactionStatus('LGR0000000');
 
@@ -155,7 +155,7 @@ it('can check account balance', function () {
     config()->set('mpesa.transaction_status.party_a', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::accountBalance();
 
@@ -176,7 +176,7 @@ it('can reverse transaction', function () {
     config()->set('mpesa.c2b.shortcode', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::reversal('LGR0000000', 100, '600000');
 
@@ -233,7 +233,7 @@ it('can initiate b2b payment', function () {
     config()->set('mpesa.b2c.shortcode', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
     config()->set('mpesa.callbacks.b2b.result', 'https://example.com/result');
     config()->set('mpesa.callbacks.b2b.timeout', 'https://example.com/timeout');
 
@@ -417,4 +417,113 @@ it('can set idempotency key', function () {
     $property = $reflection->getProperty('overrides');
 
     expect($property->getValue($instance))->toHaveKey('idempotency_key', 'unique_key_123');
+});
+
+it('can set party b override', function () {
+    $mpesa = new \Joemuigai\LaravelMpesa\LaravelMpesa;
+    $instance = $mpesa->withPartyB('600001');
+
+    $reflection = new ReflectionClass($instance);
+    $property = $reflection->getProperty('overrides');
+
+    expect($property->getValue($instance))->toHaveKey('party_b', '600001');
+});
+
+it('uses party b from runtime override in stk push', function () {
+    Http::fake([
+        '*/oauth/v1/generate*' => Http::response(['access_token' => 'test_token', 'expires_in' => 3600], 200),
+        '*/mpesa/stkpush/v1/processrequest' => Http::response([
+            'MerchantRequestID' => '12345',
+            'CheckoutRequestID' => '67890',
+            'ResponseCode' => '0',
+        ], 200),
+    ]);
+
+    config()->set('mpesa.stk.shortcode', '174379');
+    config()->set('mpesa.stk.passkey', 'test_passkey');
+    config()->set('mpesa.stk.callback_url', 'https://example.com/callback');
+
+    LaravelMpesa::withPartyB('600001')->stkPush(100, '0712345678');
+
+    Http::assertSent(function ($request) {
+        $body = json_decode($request->body(), true);
+
+        return isset($body['PartyB']) && $body['PartyB'] === '600001';
+    });
+});
+
+it('uses party b from config when no override', function () {
+    Http::fake([
+        '*/oauth/v1/generate*' => Http::response(['access_token' => 'test_token', 'expires_in' => 3600], 200),
+        '*/mpesa/stkpush/v1/processrequest' => Http::response([
+            'MerchantRequestID' => '12345',
+            'CheckoutRequestID' => '67890',
+            'ResponseCode' => '0',
+        ], 200),
+    ]);
+
+    config()->set('mpesa.stk.shortcode', '174379');
+    config()->set('mpesa.stk.party_b', '600001');
+    config()->set('mpesa.stk.passkey', 'test_passkey');
+    config()->set('mpesa.stk.callback_url', 'https://example.com/callback');
+
+    LaravelMpesa::stkPush(100, '0712345678');
+
+    Http::assertSent(function ($request) {
+        $body = json_decode($request->body(), true);
+
+        return isset($body['PartyB']) && $body['PartyB'] === '600001';
+    });
+});
+
+it('defaults party b to shortcode for backward compatibility', function () {
+    Http::fake([
+        '*/oauth/v1/generate*' => Http::response(['access_token' => 'test_token', 'expires_in' => 3600], 200),
+        '*/mpesa/stkpush/v1/processrequest' => Http::response([
+            'MerchantRequestID' => '12345',
+            'CheckoutRequestID' => '67890',
+            'ResponseCode' => '0',
+        ], 200),
+    ]);
+
+    config()->set('mpesa.stk.shortcode', '174379');
+    config()->set('mpesa.stk.passkey', 'test_passkey');
+    config()->set('mpesa.stk.callback_url', 'https://example.com/callback');
+    // No party_b config set
+
+    LaravelMpesa::stkPush(100, '0712345678');
+
+    Http::assertSent(function ($request) {
+        $body = json_decode($request->body(), true);
+
+        return isset($body['PartyB']) && $body['PartyB'] === '174379';
+    });
+});
+
+it('can chain party b with other overrides', function () {
+    Http::fake([
+        '*/oauth/v1/generate*' => Http::response(['access_token' => 'test_token', 'expires_in' => 3600], 200),
+        '*/mpesa/stkpush/v1/processrequest' => Http::response([
+            'MerchantRequestID' => '12345',
+            'CheckoutRequestID' => '67890',
+            'ResponseCode' => '0',
+        ], 200),
+    ]);
+
+    config()->set('mpesa.stk.passkey', 'test_passkey');
+    config()->set('mpesa.stk.callback_url', 'https://example.com/callback');
+
+    LaravelMpesa::withBuyGoods()
+        ->withShortcode('600001')
+        ->withPartyB('600002')
+        ->stkPush(100, '0712345678');
+
+    Http::assertSent(function ($request) {
+        $body = json_decode($request->body(), true);
+
+        return isset($body['TransactionType']) && isset($body['BusinessShortCode']) && isset($body['PartyB'])
+            && $body['TransactionType'] === 'CustomerBuyGoodsOnline'
+            && $body['BusinessShortCode'] === '600001'
+            && $body['PartyB'] === '600002';
+    });
 });

@@ -84,6 +84,23 @@ class MpesaService
     }
 
     /**
+     * Override PartyB (receiver) for this request.
+     *
+     * Useful in hybrid scenarios where different till numbers receive funds,
+     * such as multi-store platforms where each branch has its own till.
+     *
+     * @param string $partyB The till number or shortcode that will receive the payment
+     * @return self
+     */
+    public function withPartyB(string $partyB): self
+    {
+        $clone = clone $this;
+        $clone->mpesa = $this->mpesa->withPartyB($partyB);
+        return $clone;
+    }
+
+
+    /**
      * Initiate an STK Push (Lipa Na M-Pesa Online) request.
      *
      * Use this when you want to prompt the customer to enter their PIN on their phone

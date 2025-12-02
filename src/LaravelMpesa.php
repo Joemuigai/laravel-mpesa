@@ -129,6 +129,23 @@ class LaravelMpesa
     }
 
     /**
+     * Override PartyB (receiver) for this request.
+     *
+     * Useful in hybrid scenarios where different till numbers receive funds,
+     * such as multi-store platforms where each branch has its own till.
+     *
+     * @param  string  $partyB  The till number or shortcode that will receive the payment
+     */
+    public function withPartyB(string $partyB): self
+    {
+        $instance = clone $this;
+        $instance->overrides['party_b'] = $partyB;
+
+        return $instance;
+    }
+
+
+    /**
      * Resolve configuration value based on context.
      *
      * Priority:
@@ -187,7 +204,7 @@ class LaravelMpesa
             return $accessToken;
         }
 
-        throw new MpesaAuthenticationException('Failed to generate access token: '.$response->body());
+        throw new MpesaAuthenticationException('Failed to generate access token: ' . $response->body());
     }
 
     /**
@@ -195,7 +212,7 @@ class LaravelMpesa
      */
     protected function generatePassword(string $shortcode, string $passkey, string $timestamp): string
     {
-        return base64_encode($shortcode.$passkey.$timestamp);
+        return base64_encode($shortcode . $passkey . $timestamp);
     }
 
     /**
@@ -243,7 +260,7 @@ class LaravelMpesa
             'TransactionType' => $finalTransactionType,
             'Amount' => (int) $amount,
             'PartyA' => $phoneNumber,
-            'PartyB' => $shortcode,
+            'PartyB' => $this->getConfig('stk.party_b') ?? $shortcode,
             'PhoneNumber' => $phoneNumber,
             'CallBackURL' => $callbackUrl,
             'AccountReference' => $reference ?? $this->getConfig('stk.defaults.account_reference', 'Payment'),
@@ -265,12 +282,12 @@ class LaravelMpesa
 
         // If starts with 0, replace with 254
         if (str_starts_with($number, '0')) {
-            return '254'.substr($number, 1);
+            return '254' . substr($number, 1);
         }
 
         // If starts with 7 or 1 (and is 9 digits), prepend 254
         if ((str_starts_with($number, '7') || str_starts_with($number, '1')) && strlen($number) === 9) {
-            return '254'.$number;
+            return '254' . $number;
         }
 
         // If starts with 254, return as is
