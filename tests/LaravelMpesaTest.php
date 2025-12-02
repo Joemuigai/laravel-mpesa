@@ -113,7 +113,7 @@ it('can initiate b2c payment', function () {
     config()->set('mpesa.b2c.shortcode', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::b2c(100, '0712345678');
 
@@ -134,7 +134,7 @@ it('can check transaction status', function () {
     config()->set('mpesa.transaction_status.party_a', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::transactionStatus('LGR0000000');
 
@@ -155,7 +155,7 @@ it('can check account balance', function () {
     config()->set('mpesa.transaction_status.party_a', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::accountBalance();
 
@@ -176,7 +176,7 @@ it('can reverse transaction', function () {
     config()->set('mpesa.c2b.shortcode', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
 
     $response = LaravelMpesa::reversal('LGR0000000', 100, '600000');
 
@@ -233,7 +233,7 @@ it('can initiate b2b payment', function () {
     config()->set('mpesa.b2c.shortcode', '600000');
     config()->set('mpesa.initiator.name', 'testapi');
     config()->set('mpesa.initiator.password', 'password');
-    config()->set('mpesa.security.certificates.sandbox', __DIR__ . '/../src/Certificates/SandboxCertificate.cer');
+    config()->set('mpesa.security.certificates.sandbox', __DIR__.'/../src/Certificates/SandboxCertificate.cer');
     config()->set('mpesa.callbacks.b2b.result', 'https://example.com/result');
     config()->set('mpesa.callbacks.b2b.timeout', 'https://example.com/timeout');
 
