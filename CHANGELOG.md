@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-mpesa` will be documented in this file.
 
+## 0.2.8 - 2025-12-02
+
+### What's Changed
+
+* refactor: standardize `laravelmpesa:install` Artisan command to `lara… by @Joemuigai in https://github.com/Joemuigai/laravel-mpesa/pull/13
+
+**Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/0.2.7...0.2.8
+
 ## 0.2.7 - 2025-11-26
 
 ### What's Changed
