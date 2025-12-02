@@ -58,7 +58,7 @@ composer require joemuigai/laravel-mpesa
 Run the interactive installation command to set up configuration and migrations:
 
 ```bash
-php artisan mpesa:install
+php artisan laravel-mpesa:install
 ```
 
 The wizard will guide you through:
