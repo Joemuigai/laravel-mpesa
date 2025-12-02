@@ -2,6 +2,14 @@
 
 All notable changes to `laravel-mpesa` will be documented in this file.
 
+## Add `PartyB` override for STK Push to specify the receiving till number via method or configuration. - 2025-12-02
+
+### What's Changed
+
+* feat: Add `PartyB` override for STK Push to specify the receiving til… by @Joemuigai in https://github.com/Joemuigai/laravel-mpesa/pull/14
+
+**Full Changelog**: https://github.com/Joemuigai/laravel-mpesa/compare/0.2.8...0.2.9
+
 ## 0.2.8 - 2025-12-02
 
 ### What's Changed
