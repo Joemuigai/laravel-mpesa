@@ -14,7 +14,7 @@ use function Laravel\Prompts\spin;
 
 class LaravelMpesaCommand extends Command
 {
-    public $signature = 'mpesa:install {--force : Overwrite existing files}';
+    public $signature = 'laravelmpesa:install {--force : Overwrite existing files}';
 
     public $description = 'Install and configure Laravel M-Pesa package';
 
