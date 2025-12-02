@@ -263,6 +263,17 @@ return [
             'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919'
         )),
 
+        /*
+         | PartyB (Receiver of funds)
+         |--------------------------------------------------------------------------
+         | When using buy goods/till numbers in hybrid scenarios, you can specify
+         | a different PartyB to receive funds. Useful for multi-store platforms
+         | where each branch has its own till number.
+         |
+         | If not set, defaults to 'shortcode' (backward compatible).
+         */
+        'party_b' => env('MPESA_STK_PARTY_B'),
+
         // Where Safaricom sends STK results
         'callback_url' => env('MPESA_STK_CALLBACK_URL', env('MPESA_CALLBACK_URL')),
 

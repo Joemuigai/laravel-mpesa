@@ -129,6 +129,22 @@ class LaravelMpesa
     }
 
     /**
+     * Override PartyB (receiver) for this request.
+     *
+     * Useful in hybrid scenarios where different till numbers receive funds,
+     * such as multi-store platforms where each branch has its own till.
+     *
+     * @param  string  $partyB  The till number or shortcode that will receive the payment
+     */
+    public function withPartyB(string $partyB): self
+    {
+        $instance = clone $this;
+        $instance->overrides['party_b'] = $partyB;
+
+        return $instance;
+    }
+
+    /**
      * Resolve configuration value based on context.
      *
      * Priority:
@@ -243,7 +259,7 @@ class LaravelMpesa
             'TransactionType' => $finalTransactionType,
             'Amount' => (int) $amount,
             'PartyA' => $phoneNumber,
-            'PartyB' => $shortcode,
+            'PartyB' => $this->getConfig('stk.party_b') ?? $shortcode,
             'PhoneNumber' => $phoneNumber,
             'CallBackURL' => $callbackUrl,
             'AccountReference' => $reference ?? $this->getConfig('stk.defaults.account_reference', 'Payment'),

@@ -68,6 +68,32 @@ $response = LaravelMpesa::withBuyGoods()
     ->stkPush(1500, '254712345678');
 ```
 
+### With Specific Till/PartyB (Hybrid Scenarios)
+
+For multi-tenant or multi-store platforms where different tills receive their own funds:
+
+```php
+// Using facade - Store 1's till
+$response = LaravelMpesa::withBuyGoods()
+    ->withShortcode('174379')     // BusinessShortCode
+    ->withPartyB('174379')         // Till receiving the funds
+    ->withPasskey('store1_passkey')
+    ->stkPush(1500, '254712345678', 'INV-1001');
+
+// Using MpesaService - Store 2's till
+$response = $mpesaService->withBuyGoods()
+    ->withShortcode('600001')
+    ->withPartyB('600001')
+    ->withPasskey('store2_passkey')
+    ->stkPush(1500, '254712345678', 'INV-1002');
+```
+
+Or configure via environment variables:
+
+```env
+MPESA_STK_PARTY_B=174379
+```
+
 ### Expected Response
 
 ```php
